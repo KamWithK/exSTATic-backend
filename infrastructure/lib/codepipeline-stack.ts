@@ -2,7 +2,7 @@ import { Construct } from 'constructs';
 import { Stack, StackProps } from 'aws-cdk-lib';
 import { CodePipeline, CodePipelineSource, ManualApprovalStep, ShellStep } from 'aws-cdk-lib/pipelines';
 
-import { PIPELINE_CONFIG, DEV_ENV_ENVIRONMENT, TEST_ENV_ENVIRONMENT, PROD_ENV_ENVIRONMENT } from '../config';
+import { PIPELINE_CONFIG, DEV_ENV_ENVIRONMENT, TEST_ENV_ENVIRONMENT, PROD_ENV_ENVIRONMENT, INFRASTRUCTURE_FOLDER } from '../config';
 import { CodePipelineStage } from './codepipeline-stage';
 
 export class CodePipelineStack extends Stack {
@@ -12,7 +12,8 @@ export class CodePipelineStack extends Stack {
         const synth = new ShellStep('synth', {
             input: CodePipelineSource.connection(PIPELINE_CONFIG.repo_string, PIPELINE_CONFIG.branch, PIPELINE_CONFIG.connection),
             installCommands: ['npm i -g npm@latest'],
-            commands: ['cd infrastructure', 'npm ci', 'npm run build', 'npx cdk synth']
+            commands: [`cd ${INFRASTRUCTURE_FOLDER}`, 'npm ci', 'npm run build', 'npx cdk synth'],
+            primaryOutputDirectory: `${INFRASTRUCTURE_FOLDER}/cdk.out`
         });
         const pipeline = new CodePipeline(this, 'pipeline', {
             pipelineName: 'pipeline',

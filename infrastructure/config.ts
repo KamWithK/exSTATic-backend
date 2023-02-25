@@ -2,6 +2,7 @@ import { Environment } from 'aws-cdk-lib';
 import { ConnectionSourceOptions } from 'aws-cdk-lib/pipelines'
 
 export const FUNCTIONS_FOLDER = '../functions/';
+export const INFRASTRUCTURE_FOLDER = 'infrastructure';
 
 
 const SYDNEY_REGION = 'ap-southeast-2';
