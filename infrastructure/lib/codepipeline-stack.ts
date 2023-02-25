@@ -11,6 +11,7 @@ export class CodePipelineStack extends Stack {
 
         const synth = new ShellStep('synth', {
             input: CodePipelineSource.connection(PIPELINE_CONFIG.repo_string, PIPELINE_CONFIG.branch, PIPELINE_CONFIG.connection),
+            installCommands: ['npm i -g npm@latest'],
             commands: ['cd infrastructure', 'npm ci', 'npm run build', 'npx cdk synth']
         });
         const pipeline = new CodePipeline(this, 'pipeline', {
