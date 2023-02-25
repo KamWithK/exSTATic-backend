@@ -10,7 +10,7 @@ export class CodePipelineStack extends Stack {
         super(scope, id, props);
 
         const synth = new ShellStep('synth', {
-            input: CodePipelineSource.gitHub(PIPELINE_CONFIG.repo_string, PIPELINE_CONFIG.branch),
+            input: CodePipelineSource.connection(PIPELINE_CONFIG.repo_string, PIPELINE_CONFIG.branch, PIPELINE_CONFIG.connection),
             commands: ['cd infrastructure', 'npm ci', 'npm run build', 'npx cdk synth']
         });
         const pipeline = new CodePipeline(this, 'pipeline', {
