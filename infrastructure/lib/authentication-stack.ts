@@ -28,8 +28,10 @@ export class AuthenticationStack extends Stack {
             autoVerify: { email: true },
             deletionProtection: props.environmentType === 'prod'
         });
-        userPool.addClient('userPoolClient', {generateSecret: true});
+        const userPoolClient = userPool.addClient('userPoolClient');
 
-        this.userPoolAuthoriser = new HttpUserPoolAuthorizer('userPoolAuthoriser', userPool);
+        this.userPoolAuthoriser = new HttpUserPoolAuthorizer('userPoolAuthoriser', userPool, {
+            userPoolClients: [userPoolClient]
+        });
     }
 }
