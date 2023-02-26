@@ -1,6 +1,6 @@
 import { Construct } from 'constructs';
 import { Stack, StackProps } from 'aws-cdk-lib';
-import { AccountRecovery, UserPool } from 'aws-cdk-lib/aws-cognito';
+import { AccountRecovery, UserPool, UserPoolClientIdentityProvider } from 'aws-cdk-lib/aws-cognito';
 import { HttpUserPoolAuthorizer } from '@aws-cdk/aws-apigatewayv2-authorizers-alpha';
 
 export interface AuthenticationStackProps extends StackProps {
@@ -28,7 +28,9 @@ export class AuthenticationStack extends Stack {
             autoVerify: { email: true },
             deletionProtection: props.environmentType === 'prod'
         });
-        const userPoolClient = userPool.addClient('userPoolClient');
+        const userPoolClient = userPool.addClient('userPoolClient', {
+            supportedIdentityProviders: [UserPoolClientIdentityProvider.COGNITO]
+        });
 
         this.userPoolAuthoriser = new HttpUserPoolAuthorizer('userPoolAuthoriser', userPool, {
             userPoolClients: [userPoolClient]
