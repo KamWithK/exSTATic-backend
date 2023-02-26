@@ -34,7 +34,7 @@ export class CodePipelineStage extends Stage {
         });
 
         const apiStack = new ApiStack(this, 'apiStack', {
-            userPool: authenticationStack.userPool,
+            userPoolAuthoriser: authenticationStack.userPoolAuthoriser,
             routeOptions: [
                 ...settingsStack.routeOptions,
                 ...mediaStack.routeOptions,

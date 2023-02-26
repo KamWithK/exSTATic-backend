@@ -1,18 +1,19 @@
 import { Construct } from 'constructs';
-import { aws_cognito, Stack, StackProps } from 'aws-cdk-lib';
-import { AccountRecovery, StringAttribute, UserPool, UserPoolClient } from 'aws-cdk-lib/aws-cognito';
+import { Stack, StackProps } from 'aws-cdk-lib';
+import { AccountRecovery, UserPool } from 'aws-cdk-lib/aws-cognito';
+import { HttpUserPoolAuthorizer } from '@aws-cdk/aws-apigatewayv2-authorizers-alpha';
 
 export interface AuthenticationStackProps extends StackProps {
     environmentType: string
 }
 
 export class AuthenticationStack extends Stack {
-    userPool: aws_cognito.UserPool;
+    userPoolAuthoriser: HttpUserPoolAuthorizer;
 
     constructor(scope: Construct, id: string, props: AuthenticationStackProps) {
         super(scope, id, props);
         
-        this.userPool = new UserPool(this, 'userPool', {
+        const userPool = new UserPool(this, 'userPool', {
             signInCaseSensitive: false,
             signInAliases: { email: true, username: true, preferredUsername: true },
             accountRecovery: AccountRecovery.PHONE_WITHOUT_MFA_AND_EMAIL,
@@ -25,8 +26,10 @@ export class AuthenticationStack extends Stack {
             },
             selfSignUpEnabled: true,
             autoVerify: { email: true },
-            deletionProtection: props.environmentType === "prod"
+            deletionProtection: props.environmentType === 'prod'
         });
-        this.userPool.addClient('userPoolClient', {generateSecret: true});
+        userPool.addClient('userPoolClient', {generateSecret: true});
+
+        this.userPoolAuthoriser = new HttpUserPoolAuthorizer('userPoolAuthoriser', userPool);
     }
 }
