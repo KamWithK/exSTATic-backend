@@ -29,7 +29,11 @@ export class AuthenticationStack extends Stack {
             deletionProtection: props.environmentType === 'prod'
         });
         const userPoolClient = userPool.addClient('userPoolClient', {
-            supportedIdentityProviders: [UserPoolClientIdentityProvider.COGNITO]
+            supportedIdentityProviders: [UserPoolClientIdentityProvider.COGNITO],
+            authFlows: {
+                userPassword: true,
+                userSrp: true
+            }
         });
 
         this.userPoolAuthoriser = new HttpUserPoolAuthorizer('userPoolAuthoriser', userPool, {
