@@ -15,7 +15,7 @@ export class AuthenticationStack extends Stack {
         
         const userPool = new UserPool(this, 'userPool', {
             signInCaseSensitive: false,
-            signInAliases: { email: true, username: true, preferredUsername: true },
+            signInAliases: { email: true, username: true },
             accountRecovery: AccountRecovery.PHONE_WITHOUT_MFA_AND_EMAIL,
             passwordPolicy: {
                 minLength: 16,
