@@ -65,8 +65,8 @@ func HandleRequest(ctx context.Context, options OptionArguments) {
 		log.Fatalln("Error updating DynamoDB item:", updateErr)
 	}
 
-	fmt.Println(key)
-	fmt.Println(options)
+	fmt.Println(tableKey)
+	fmt.Println(tableItem)
 }
 
 func main() {
