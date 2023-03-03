@@ -23,7 +23,7 @@ export class DataStack extends Stack {
                 type: AttributeType.STRING
             },
             sortKey: {
-                name: 'mediaType',
+                name: 'media_type',
                 type: AttributeType.STRING
             },
             
@@ -56,7 +56,7 @@ export class DataStack extends Stack {
         this.mediaTable.addLocalSecondaryIndex({
             indexName: 'lastUpdatedIndex',
             sortKey: {
-                name: 'lastUpdated',
+                name: 'last_updated',
                 type: AttributeType.NUMBER
             },
             projectionType: ProjectionType.ALL
@@ -84,7 +84,7 @@ export class DataStack extends Stack {
         this.leaderboardTable.addLocalSecondaryIndex({
             indexName: 'timeReadIndex',
             sortKey: {
-                name: 'timeRead',
+                name: 'time_read',
                 type: AttributeType.NUMBER
             },
             projectionType: ProjectionType.ALL
@@ -92,7 +92,7 @@ export class DataStack extends Stack {
         this.leaderboardTable.addLocalSecondaryIndex({
             indexName: 'charsReadIndex',
             sortKey: {
-                name: 'charsRead',
+                name: 'chars_read',
                 type: AttributeType.NUMBER
             },
             projectionType: ProjectionType.ALL

@@ -24,8 +24,8 @@ type OptionArguments struct {
 }
 
 type TableKey struct {
-	Username  string
-	MediaType string
+	Username  string `json:"username" binding:"required"`
+	MediaType string `json:"media_type"`
 }
 
 var sess *session.Session
