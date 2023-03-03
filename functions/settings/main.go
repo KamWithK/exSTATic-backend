@@ -55,7 +55,7 @@ func HandleRequest(ctx context.Context, options OptionArguments) {
 	}
 
 	_, updateErr := svc.UpdateItem(&dynamodb.UpdateItemInput{
-		TableName:                 aws.String("settingsTable"),
+		TableName:                 aws.String("settings"),
 		Key:                       tableKey,
 		ExpressionAttributeValues: tableItem,
 	})
