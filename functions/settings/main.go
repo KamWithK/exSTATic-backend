@@ -39,6 +39,11 @@ func init() {
 }
 
 func HandleRequest(ctx context.Context, options OptionArguments) {
+	sess = session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+	svc = dynamodb.New(sess)
+
 	key := TableKey{
 		Username:  options.Username,
 		MediaType: options.MediaType,
