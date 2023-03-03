@@ -49,7 +49,7 @@ func HandleRequest(ctx context.Context, options OptionArguments) {
 		log.Fatalln("Error marshalling key:", keyErr)
 	}
 
-	tableItem, itemErr := dynamodbattribute.MarshalMap(key)
+	tableItem, itemErr := dynamodbattribute.MarshalMap(options)
 
 	if itemErr != nil {
 		log.Fatalln("Error marshalling item:", itemErr)
