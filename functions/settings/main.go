@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -63,6 +64,9 @@ func HandleRequest(ctx context.Context, options OptionArguments) {
 	if itemErr != nil {
 		log.Fatalln("Error updating DynamoDB item:", updateErr)
 	}
+
+	fmt.Println(key)
+	fmt.Println(options)
 }
 
 func main() {
