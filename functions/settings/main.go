@@ -66,7 +66,7 @@ func HandleRequest(ctx context.Context, options OptionArguments) {
 		ExpressionAttributeValues: tableItem,
 	})
 
-	if itemErr != nil {
+	if updateErr != nil {
 		log.Fatalln("Error updating DynamoDB item:", updateErr)
 	}
 
