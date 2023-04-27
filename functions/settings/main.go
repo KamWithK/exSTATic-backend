@@ -98,7 +98,7 @@ func createUpdateExpressionAttributes(optionArgs OptionArguments) (string, map[s
 		field := valueOfOptionArgs.Field(i)
 		fieldType := typeOfOptionArgs.Field(i)
 
-		if field.Kind() != reflect.Invalid && !field.IsZero() && !field.IsNil() {
+		if field.Kind() != reflect.Invalid && !field.IsZero() {
 			jsonTag := strings.Split(fieldType.Tag.Get("json"), ",")[0]
 			if jsonTag != "username" && jsonTag != "media_type" {
 				updateExpression, expressionAttributeNames, expressionAttributeValues = addAttributeIfNotNull(updateExpression, expressionAttributeNames, expressionAttributeValues, fieldType.Name, jsonTag, field.Interface())
