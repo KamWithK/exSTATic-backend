@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"reflect"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
@@ -54,16 +56,14 @@ func HandleRequest(ctx context.Context, options OptionArguments) {
 		log.Fatalln("Error marshalling key:", keyErr)
 	}
 
-	tableItem, itemErr := dynamodbattribute.MarshalMap(options)
-
-	if itemErr != nil {
-		log.Fatalln("Error marshalling item:", itemErr)
-	}
+	updateExpression, expressionAttributeNames, expressionAttributeValues := createUpdateExpressionAttributes(options)
 
 	_, updateErr := svc.UpdateItem(&dynamodb.UpdateItemInput{
 		TableName:                 aws.String("settings"),
 		Key:                       tableKey,
-		ExpressionAttributeValues: tableItem,
+		UpdateExpression:          aws.String(updateExpression),
+		ExpressionAttributeNames:  expressionAttributeNames,
+		ExpressionAttributeValues: expressionAttributeValues,
 	})
 
 	if updateErr != nil {
@@ -71,7 +71,42 @@ func HandleRequest(ctx context.Context, options OptionArguments) {
 	}
 
 	fmt.Println(tableKey)
-	fmt.Println(tableItem)
+}
+
+func addAttributeIfNotNull(updateExpression string, expressionAttributeNames map[string]*string, expressionAttributeValues map[string]*dynamodb.AttributeValue, attributeName, jsonAttributeName string, value interface{}) (string, map[string]*string, map[string]*dynamodb.AttributeValue) {
+	if value != nil {
+		if len(expressionAttributeNames) > 0 {
+			updateExpression += ","
+		}
+		updateExpression += " #" + attributeName + " = :" + attributeName
+		expressionAttributeNames["#"+attributeName] = aws.String(jsonAttributeName)
+		value, _ := dynamodbattribute.Marshal(value)
+		expressionAttributeValues[":"+attributeName] = value
+	}
+	return updateExpression, expressionAttributeNames, expressionAttributeValues
+}
+
+func createUpdateExpressionAttributes(optionArgs OptionArguments) (string, map[string]*string, map[string]*dynamodb.AttributeValue) {
+	updateExpression := "SET"
+	expressionAttributeNames := map[string]*string{}
+	expressionAttributeValues := map[string]*dynamodb.AttributeValue{}
+
+	valueOfOptionArgs := reflect.ValueOf(optionArgs)
+	typeOfOptionArgs := valueOfOptionArgs.Type()
+
+	for i := 0; i < valueOfOptionArgs.NumField(); i++ {
+		field := valueOfOptionArgs.Field(i)
+		fieldType := typeOfOptionArgs.Field(i)
+
+		if field.Kind() != reflect.Invalid && !field.IsZero() && !field.IsNil() {
+			jsonTag := strings.Split(fieldType.Tag.Get("json"), ",")[0]
+			if jsonTag != "username" && jsonTag != "media_type" {
+				updateExpression, expressionAttributeNames, expressionAttributeValues = addAttributeIfNotNull(updateExpression, expressionAttributeNames, expressionAttributeValues, fieldType.Name, jsonTag, field.Interface())
+			}
+		}
+	}
+
+	return updateExpression, expressionAttributeNames, expressionAttributeValues
 }
 
 func main() {
