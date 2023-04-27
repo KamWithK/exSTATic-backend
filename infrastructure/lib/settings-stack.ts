@@ -17,24 +17,30 @@ export class SettingsStack extends Stack {
     constructor(scope: Construct, id: string, props: SettingsStackProps) {
         super(scope, id, props);
         
-        const settingsFunction = new GoFunction(this, 'settingsFunction', {
-            entry: FUNCTIONS_FOLDER + 'settings'
+        const settingsGetFunction = new GoFunction(this, 'settingsGetFunction', {
+            entry: FUNCTIONS_FOLDER + 'settings/get'
         });
 
-        props.settingsTable.grantReadWriteData(settingsFunction);
+        const settingsPutFunction = new GoFunction(this, 'settingsPutFunction', {
+            entry: FUNCTIONS_FOLDER + 'settings/put'
+        });
 
-        const settingsIntegration = new HttpLambdaIntegration('settingsIntegration', settingsFunction);
+        props.settingsTable.grantReadWriteData(settingsGetFunction);
+        props.settingsTable.grantReadWriteData(settingsPutFunction);
+
+        const settingsGetIntegration = new HttpLambdaIntegration('settingsIntegration', settingsGetFunction);
+        const settingsPutIntegration = new HttpLambdaIntegration('settingsIntegration', settingsPutFunction);
 
         const settingsGetRouteOptions = {
             path: '/settings/get',
             methods: [HttpMethod.GET],
-            integration: settingsIntegration
+            integration: settingsGetIntegration
         };
 
         const settingsPutRouteOptions = {
             path: '/settings/put',
             methods: [HttpMethod.PUT],
-            integration: settingsIntegration
+            integration: settingsPutIntegration
         };
 
         this.routeOptions = [settingsGetRouteOptions, settingsPutRouteOptions];
