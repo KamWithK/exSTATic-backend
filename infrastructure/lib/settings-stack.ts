@@ -5,7 +5,6 @@ import { Table } from 'aws-cdk-lib/aws-dynamodb';
 import { HttpLambdaIntegration } from '@aws-cdk/aws-apigatewayv2-integrations-alpha';
 import { AddRoutesOptions, HttpMethod } from '@aws-cdk/aws-apigatewayv2-alpha';
 import { FUNCTIONS_FOLDER } from '../config';
-import { Runtime } from 'aws-cdk-lib/aws-lambda';
 
 export interface SettingsStackProps extends StackProps {
     settingsTable: Table
