@@ -9,23 +9,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+
+	user_settings "github.com/KamWithK/exSTATic-backend/settings"
 )
-
-type UserSettings struct {
-	Username            string   `json:"username" binding:"required"`
-	MediaType           string   `json:"media_type"`
-	ShowOnLeaderboard   *bool    `json:"show_on_leaderboard"`
-	InterfaceBlurAmount *float32 `json:"interface_blur_amount"`
-	MenuBlurAmount      *float32 `json:"menu_blur_amount"`
-	MaxAFKTime          *float32 `json:"max_afk_time"`
-	MaxBlurTime         *float32 `json:"max_blur_time"`
-	MaxLoadLines        *int16   `json:"max_load_lines"`
-}
-
-type TableKey struct {
-	Username  string `json:"username" binding:"required"`
-	MediaType string `json:"media_type"`
-}
 
 var sess *session.Session
 var svc *dynamodb.DynamoDB
@@ -37,7 +23,7 @@ func init() {
 	svc = dynamodb.New(sess)
 }
 
-func HandleRequest(ctx context.Context, key TableKey) (*UserSettings, error) {
+func HandleRequest(ctx context.Context, key user_settings.TableKey) (*user_settings.UserSettings, error) {
 	tableKey, keyErr := dynamodbattribute.MarshalMap(key)
 
 	if keyErr != nil {
@@ -57,7 +43,7 @@ func HandleRequest(ctx context.Context, key TableKey) (*UserSettings, error) {
 		return nil, fmt.Errorf("Item not found in table")
 	}
 
-	optionArgs := UserSettings{}
+	optionArgs := user_settings.UserSettings{}
 	if err := dynamodbattribute.UnmarshalMap(result.Item, &optionArgs); err != nil {
 		return nil, fmt.Errorf("Error unmarshalling item: %s", err.Error())
 	}

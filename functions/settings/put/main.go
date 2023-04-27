@@ -11,23 +11,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+
+	user_settings "github.com/KamWithK/exSTATic-backend/settings"
 )
-
-type UserSettings struct {
-	Username            string   `json:"username" binding:"required"`
-	MediaType           string   `json:"media_type"`
-	ShowOnLeaderboard   *bool    `json:"show_on_leaderboard"`
-	InterfaceBlurAmount *float32 `json:"interface_blur_amount"`
-	MenuBlurAmount      *float32 `json:"menu_blur_amount"`
-	MaxAFKTime          *float32 `json:"max_afk_time"`
-	MaxBlurTime         *float32 `json:"max_blur_time"`
-	MaxLoadLines        *int16   `json:"max_load_lines"`
-}
-
-type TableKey struct {
-	Username  string `json:"username" binding:"required"`
-	MediaType string `json:"media_type"`
-}
 
 var sess *session.Session
 var svc *dynamodb.DynamoDB
@@ -39,8 +25,8 @@ func init() {
 	svc = dynamodb.New(sess)
 }
 
-func HandleRequest(ctx context.Context, options UserSettings) error {
-	key := TableKey{
+func HandleRequest(ctx context.Context, options user_settings.UserSettings) error {
+	key := user_settings.TableKey{
 		Username:  options.Username,
 		MediaType: options.MediaType,
 	}
@@ -80,7 +66,7 @@ func addAttributeIfNotNull(updateExpression string, expressionAttributeNames map
 	return updateExpression, expressionAttributeNames, expressionAttributeValues
 }
 
-func createUpdateExpressionAttributes(optionArgs UserSettings) (string, map[string]*string, map[string]*dynamodb.AttributeValue) {
+func createUpdateExpressionAttributes(optionArgs user_settings.UserSettings) (string, map[string]*string, map[string]*dynamodb.AttributeValue) {
 	updateExpression := "SET"
 	expressionAttributeNames := map[string]*string{}
 	expressionAttributeValues := map[string]*dynamodb.AttributeValue{}

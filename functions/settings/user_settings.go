@@ -10,3 +10,8 @@ type UserSettings struct {
 	MaxBlurTime         *float32 `json:"max_blur_time"`
 	MaxLoadLines        *int16   `json:"max_load_lines"`
 }
+
+type TableKey struct {
+	Username  string `json:"username" binding:"required"`
+	MediaType string `json:"media_type"`
+}
