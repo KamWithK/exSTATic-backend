@@ -27,8 +27,8 @@ export class SettingsStack extends Stack {
         props.settingsTable.grantReadWriteData(settingsGetFunction);
         props.settingsTable.grantReadWriteData(settingsPutFunction);
 
-        const settingsGetIntegration = new HttpLambdaIntegration('settingsIntegration', settingsGetFunction);
-        const settingsPutIntegration = new HttpLambdaIntegration('settingsIntegration', settingsPutFunction);
+        const settingsGetIntegration = new HttpLambdaIntegration('settingsGetIntegration', settingsGetFunction);
+        const settingsPutIntegration = new HttpLambdaIntegration('settingsPutIntegration', settingsPutFunction);
 
         const settingsGetRouteOptions = {
             path: '/settings/get',
