@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 
@@ -14,7 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
-type OptionArguments struct {
+type UserSettings struct {
 	Username            string   `json:"username" binding:"required"`
 	MediaType           string   `json:"media_type"`
 	ShowOnLeaderboard   *bool    `json:"show_on_leaderboard"`
@@ -40,12 +39,7 @@ func init() {
 	svc = dynamodb.New(sess)
 }
 
-func HandleRequest(ctx context.Context, options OptionArguments) {
-	sess = session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}))
-	svc = dynamodb.New(sess)
-
+func HandleRequest(ctx context.Context, options UserSettings) error {
 	key := TableKey{
 		Username:  options.Username,
 		MediaType: options.MediaType,
@@ -53,7 +47,7 @@ func HandleRequest(ctx context.Context, options OptionArguments) {
 	tableKey, keyErr := dynamodbattribute.MarshalMap(key)
 
 	if keyErr != nil {
-		log.Fatalln("Error marshalling key:", keyErr)
+		return fmt.Errorf("Error marshalling key: %s", keyErr.Error())
 	}
 
 	updateExpression, expressionAttributeNames, expressionAttributeValues := createUpdateExpressionAttributes(options)
@@ -67,10 +61,10 @@ func HandleRequest(ctx context.Context, options OptionArguments) {
 	})
 
 	if updateErr != nil {
-		log.Fatalln("Error updating DynamoDB item:", updateErr)
+		return fmt.Errorf("Error updating DynamoDB item: %s", updateErr.Error())
 	}
 
-	fmt.Println(tableKey)
+	return nil
 }
 
 func addAttributeIfNotNull(updateExpression string, expressionAttributeNames map[string]*string, expressionAttributeValues map[string]*dynamodb.AttributeValue, attributeName, jsonAttributeName string, value interface{}) (string, map[string]*string, map[string]*dynamodb.AttributeValue) {
@@ -86,7 +80,7 @@ func addAttributeIfNotNull(updateExpression string, expressionAttributeNames map
 	return updateExpression, expressionAttributeNames, expressionAttributeValues
 }
 
-func createUpdateExpressionAttributes(optionArgs OptionArguments) (string, map[string]*string, map[string]*dynamodb.AttributeValue) {
+func createUpdateExpressionAttributes(optionArgs UserSettings) (string, map[string]*string, map[string]*dynamodb.AttributeValue) {
 	updateExpression := "SET"
 	expressionAttributeNames := map[string]*string{}
 	expressionAttributeValues := map[string]*dynamodb.AttributeValue{}

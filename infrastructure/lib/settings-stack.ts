@@ -25,12 +25,18 @@ export class SettingsStack extends Stack {
 
         const settingsIntegration = new HttpLambdaIntegration('settingsIntegration', settingsFunction);
 
-        const settingsRouteOptions = {
-            path: '/settings',
-            methods: [HttpMethod.ANY],
+        const settingsGetRouteOptions = {
+            path: '/settings/get',
+            methods: [HttpMethod.GET],
             integration: settingsIntegration
         };
 
-        this.routeOptions = [settingsRouteOptions];
+        const settingsPutRouteOptions = {
+            path: '/settings/put',
+            methods: [HttpMethod.PUT],
+            integration: settingsIntegration
+        };
+
+        this.routeOptions = [settingsGetRouteOptions, settingsPutRouteOptions];
     }
 }
