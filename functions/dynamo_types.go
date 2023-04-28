@@ -2,7 +2,6 @@ package dynamo_types
 
 import (
 	"reflect"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -15,14 +14,13 @@ type UserSettingsKey struct {
 }
 
 type UserSettings struct {
-	Username            string   `json:"username" binding:"required"`
-	MediaType           string   `json:"media_type"`
-	ShowOnLeaderboard   *bool    `json:"show_on_leaderboard"`
-	InterfaceBlurAmount *float32 `json:"interface_blur_amount"`
-	MenuBlurAmount      *float32 `json:"menu_blur_amount"`
-	MaxAFKTime          *float32 `json:"max_afk_time"`
-	MaxBlurTime         *float32 `json:"max_blur_time"`
-	MaxLoadLines        *int16   `json:"max_load_lines"`
+	Key                 UserSettingsKey `json:"key" binding:"required"`
+	ShowOnLeaderboard   *bool           `json:"show_on_leaderboard"`
+	InterfaceBlurAmount *float32        `json:"interface_blur_amount"`
+	MenuBlurAmount      *float32        `json:"menu_blur_amount"`
+	MaxAFKTime          *float32        `json:"max_afk_time"`
+	MaxBlurTime         *float32        `json:"max_blur_time"`
+	MaxLoadLines        *int16          `json:"max_load_lines"`
 }
 
 type UserMediaKey struct {
@@ -32,20 +30,16 @@ type UserMediaKey struct {
 }
 
 type UserMediaEntry struct {
-	Username        string  `json:"username" binding:"required"`
-	MediaType       string  `json:"media_type" binding:"required"`
-	MediaIdentifier string  `json:"media_identifier"`
-	DisplayName     *string `json:"display_type"`
-	LastUpdate      *string `json:"last_update"`
+	Key         UserMediaKey `json:"key" binding:"required"`
+	DisplayName *string      `json:"display_type"`
+	LastUpdate  *string      `json:"last_update"`
 }
 
 type UserMediaStat struct {
-	Username        string  `json:"username" binding:"required"`
-	MediaType       string  `json:"media_type" binding:"required"`
-	MediaIdentifier string  `json:"media_identifier"`
-	Date            *string `json:"date"`
-	Stats           *string `json:"stats"`
-	LastUpdate      *string `json:"last_update"`
+	Key        UserMediaKey `json:"key" binding:"required"`
+	Date       *string      `json:"date"`
+	Stats      *string      `json:"stats"`
+	LastUpdate *string      `json:"last_update"`
 }
 
 func AddAttributeIfNotNull(updateExpression string, expressionAttributeNames map[string]*string, expressionAttributeValues map[string]*dynamodb.AttributeValue, attributeName, jsonAttributeName string, value interface{}) (string, map[string]*string, map[string]*dynamodb.AttributeValue) {
@@ -74,8 +68,7 @@ func CreateUpdateExpressionAttributes(optionArgs interface{}) (string, map[strin
 		fieldType := typeOfOptionArgs.Field(i)
 
 		if field.Kind() != reflect.Invalid && !field.IsZero() {
-			jsonTag := strings.Split(fieldType.Tag.Get("json"), ",")[0]
-			if jsonTag != "username" && jsonTag != "media_type" {
+			if fieldType.Name != "Key" {
 				updateExpression, expressionAttributeNames, expressionAttributeValues = AddAttributeIfNotNull(updateExpression, expressionAttributeNames, expressionAttributeValues, fieldType.Name, jsonTag, field.Interface())
 			}
 		}

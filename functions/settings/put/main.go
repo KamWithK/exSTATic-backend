@@ -24,11 +24,7 @@ func init() {
 }
 
 func HandleRequest(ctx context.Context, options dynamo_types.UserSettings) error {
-	key := dynamo_types.UserSettingsKey{
-		Username:  options.Username,
-		MediaType: options.MediaType,
-	}
-	tableKey, keyErr := dynamodbattribute.MarshalMap(key)
+	tableKey, keyErr := dynamodbattribute.MarshalMap(options.Key)
 
 	if keyErr != nil {
 		return fmt.Errorf("Error marshalling key: %s", keyErr.Error())
