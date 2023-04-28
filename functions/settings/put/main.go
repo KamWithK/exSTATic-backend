@@ -12,7 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 
-	user_settings "github.com/KamWithK/exSTATic-backend/settings"
+	dynamo_types "github.com/KamWithK/exSTATic-backend"
 )
 
 var sess *session.Session
@@ -25,8 +25,8 @@ func init() {
 	svc = dynamodb.New(sess)
 }
 
-func HandleRequest(ctx context.Context, options user_settings.UserSettings) error {
-	key := user_settings.TableKey{
+func HandleRequest(ctx context.Context, options dynamo_types.UserSettings) error {
+	key := dynamo_types.UserSettingsKey{
 		Username:  options.Username,
 		MediaType: options.MediaType,
 	}
@@ -66,7 +66,7 @@ func addAttributeIfNotNull(updateExpression string, expressionAttributeNames map
 	return updateExpression, expressionAttributeNames, expressionAttributeValues
 }
 
-func createUpdateExpressionAttributes(optionArgs user_settings.UserSettings) (string, map[string]*string, map[string]*dynamodb.AttributeValue) {
+func createUpdateExpressionAttributes(optionArgs dynamo_types.UserSettings) (string, map[string]*string, map[string]*dynamodb.AttributeValue) {
 	updateExpression := "SET"
 	expressionAttributeNames := map[string]*string{}
 	expressionAttributeValues := map[string]*dynamodb.AttributeValue{}

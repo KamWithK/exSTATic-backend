@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 
-	user_settings "github.com/KamWithK/exSTATic-backend/settings"
+	dynamo_types "github.com/KamWithK/exSTATic-backend"
 )
 
 var sess *session.Session
@@ -23,7 +23,7 @@ func init() {
 	svc = dynamodb.New(sess)
 }
 
-func HandleRequest(ctx context.Context, key user_settings.TableKey) (*user_settings.UserSettings, error) {
+func HandleRequest(ctx context.Context, key dynamo_types.UserSettingsKey) (*dynamo_types.UserSettings, error) {
 	tableKey, keyErr := dynamodbattribute.MarshalMap(key)
 
 	if keyErr != nil {
@@ -43,7 +43,7 @@ func HandleRequest(ctx context.Context, key user_settings.TableKey) (*user_setti
 		return nil, fmt.Errorf("Item not found in table")
 	}
 
-	optionArgs := user_settings.UserSettings{}
+	optionArgs := dynamo_types.UserSettings{}
 	if err := dynamodbattribute.UnmarshalMap(result.Item, &optionArgs); err != nil {
 		return nil, fmt.Errorf("Error unmarshalling item: %s", err.Error())
 	}
