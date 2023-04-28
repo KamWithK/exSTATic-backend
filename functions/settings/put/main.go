@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"reflect"
-	"strings"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
@@ -36,7 +34,7 @@ func HandleRequest(ctx context.Context, options dynamo_types.UserSettings) error
 		return fmt.Errorf("Error marshalling key: %s", keyErr.Error())
 	}
 
-	updateExpression, expressionAttributeNames, expressionAttributeValues := createUpdateExpressionAttributes(options)
+	updateExpression, expressionAttributeNames, expressionAttributeValues := dynamo_types.CreateUpdateExpressionAttributes(options)
 
 	_, updateErr := svc.UpdateItem(&dynamodb.UpdateItemInput{
 		TableName:                 aws.String("settings"),
@@ -51,42 +49,6 @@ func HandleRequest(ctx context.Context, options dynamo_types.UserSettings) error
 	}
 
 	return nil
-}
-
-func addAttributeIfNotNull(updateExpression string, expressionAttributeNames map[string]*string, expressionAttributeValues map[string]*dynamodb.AttributeValue, attributeName, jsonAttributeName string, value interface{}) (string, map[string]*string, map[string]*dynamodb.AttributeValue) {
-	if value != nil {
-		if len(expressionAttributeNames) > 0 {
-			updateExpression += ","
-		}
-		updateExpression += " #" + attributeName + " = :" + attributeName
-		expressionAttributeNames["#"+attributeName] = aws.String(jsonAttributeName)
-		value, _ := dynamodbattribute.Marshal(value)
-		expressionAttributeValues[":"+attributeName] = value
-	}
-	return updateExpression, expressionAttributeNames, expressionAttributeValues
-}
-
-func createUpdateExpressionAttributes(optionArgs dynamo_types.UserSettings) (string, map[string]*string, map[string]*dynamodb.AttributeValue) {
-	updateExpression := "SET"
-	expressionAttributeNames := map[string]*string{}
-	expressionAttributeValues := map[string]*dynamodb.AttributeValue{}
-
-	valueOfOptionArgs := reflect.ValueOf(optionArgs)
-	typeOfOptionArgs := valueOfOptionArgs.Type()
-
-	for i := 0; i < valueOfOptionArgs.NumField(); i++ {
-		field := valueOfOptionArgs.Field(i)
-		fieldType := typeOfOptionArgs.Field(i)
-
-		if field.Kind() != reflect.Invalid && !field.IsZero() {
-			jsonTag := strings.Split(fieldType.Tag.Get("json"), ",")[0]
-			if jsonTag != "username" && jsonTag != "media_type" {
-				updateExpression, expressionAttributeNames, expressionAttributeValues = addAttributeIfNotNull(updateExpression, expressionAttributeNames, expressionAttributeValues, fieldType.Name, jsonTag, field.Interface())
-			}
-		}
-	}
-
-	return updateExpression, expressionAttributeNames, expressionAttributeValues
 }
 
 func main() {
