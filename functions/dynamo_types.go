@@ -32,14 +32,14 @@ type UserMediaKey struct {
 type UserMediaEntry struct {
 	Key         UserMediaKey `json:"key" binding:"required"`
 	DisplayName *string      `json:"display_type"`
-	LastUpdate  *string      `json:"last_update"`
+	LastUpdate  *int64       `json:"last_update"`
 }
 
 type UserMediaStat struct {
 	Key        UserMediaKey `json:"key" binding:"required"`
-	Date       *string      `json:"date"`
+	Date       *int64       `json:"date"`
 	Stats      *string      `json:"stats"`
-	LastUpdate *string      `json:"last_update"`
+	LastUpdate *int64       `json:"last_update"`
 }
 
 func AddAttributeIfNotNull(updateExpression string, expressionAttributeNames map[string]*string, expressionAttributeValues map[string]*dynamodb.AttributeValue, attributeName, jsonAttributeName string, value interface{}) (string, map[string]*string, map[string]*dynamodb.AttributeValue) {
