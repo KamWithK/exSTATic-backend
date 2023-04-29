@@ -25,10 +25,15 @@ func init() {
 }
 
 func HandleRequest(ctx context.Context, userMediaEntry dynamo_types.UserMediaEntry) error {
-	var time_now = time.Now().Unix()
-	userMediaEntry.LastUpdate = &time_now
+	var timeNow = time.Now().Unix()
+	userMediaEntry.LastUpdate = &timeNow
 
-	tableKey, keyErr := dynamodbattribute.MarshalMap(userMediaEntry.Key)
+	var compositeKey = dynamo_types.CompositeKey{
+		PK: userMediaEntry.Key.MediaType + "#" + userMediaEntry.Key.Username,
+		SK: userMediaEntry.Key.MediaIdentifier,
+	}
+
+	tableKey, keyErr := dynamodbattribute.MarshalMap(compositeKey)
 
 	if keyErr != nil {
 		return fmt.Errorf("Error marshalling key: %s", keyErr.Error())

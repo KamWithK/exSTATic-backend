@@ -8,6 +8,11 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
+type CompositeKey struct {
+	PK interface{} `json:"pk" binding:"required"`
+	SK interface{} `json:"sk"`
+}
+
 type UserSettingsKey struct {
 	Username  string `json:"username" binding:"required"`
 	MediaType string `json:"media_type"`
