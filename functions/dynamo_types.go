@@ -48,6 +48,19 @@ type UserMediaStat struct {
 	LastUpdate *int64       `json:"last_update"`
 }
 
+type LeaderboardKey struct {
+	TimePeriod string `json:"time_period" binding:"required"`
+	MediaType  string `json:"media_type" binding:"required"`
+	Username   string `json:"username" binding:"required"`
+}
+
+type LeaderboardEntry struct {
+	Key        LeaderboardKey `json:"key" binding:"required"`
+	MediaNames string         `json:"media_names"`
+	TimeRead   int64          `json:"time_read"`
+	CharsRead  int64          `json:"chars_read"`
+}
+
 func AddAttributeIfNotNull(updateExpression string, expressionAttributeNames map[string]*string, expressionAttributeValues map[string]*dynamodb.AttributeValue, attributeName, jsonAttributeName string, value interface{}) (string, map[string]*string, map[string]*dynamodb.AttributeValue) {
 	if value != nil {
 		if len(expressionAttributeNames) > 0 {
