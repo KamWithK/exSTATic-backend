@@ -49,9 +49,9 @@ type UserMediaStat struct {
 }
 
 type LeaderboardKey struct {
+	Username   string `json:"username" binding:"required"`
 	TimePeriod string `json:"time_period" binding:"required"`
 	MediaType  string `json:"media_type" binding:"required"`
-	Username   string `json:"username" binding:"required"`
 }
 
 type LeaderboardEntry struct {
