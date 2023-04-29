@@ -2,6 +2,7 @@ package dynamo_types
 
 import (
 	"reflect"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -74,6 +75,7 @@ func CreateUpdateExpressionAttributes(optionArgs interface{}) (string, map[strin
 
 		if field.Kind() != reflect.Invalid && !field.IsZero() {
 			if fieldType.Name != "Key" {
+				jsonTag := strings.Split(fieldType.Tag.Get("json"), ",")[0]
 				updateExpression, expressionAttributeNames, expressionAttributeValues = AddAttributeIfNotNull(updateExpression, expressionAttributeNames, expressionAttributeValues, fieldType.Name, jsonTag, field.Interface())
 			}
 		}
