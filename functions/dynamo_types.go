@@ -24,8 +24,8 @@ type UserSettings struct {
 	ShowOnLeaderboard   *bool           `json:"show_on_leaderboard"`
 	InterfaceBlurAmount *float32        `json:"interface_blur_amount"`
 	MenuBlurAmount      *float32        `json:"menu_blur_amount"`
-	MaxAFKTime          *float32        `json:"max_afk_time"`
-	MaxBlurTime         *float32        `json:"max_blur_time"`
+	MaxAFKTime          *int16          `json:"max_afk_time"`
+	MaxBlurTime         *int16          `json:"max_blur_time"`
 	MaxLoadLines        *int16          `json:"max_load_lines"`
 }
 
@@ -38,14 +38,14 @@ type UserMediaKey struct {
 type UserMediaEntry struct {
 	Key         UserMediaKey `json:"key" binding:"required"`
 	DisplayName *string      `json:"display_type"`
-	LastUpdate  *int64       `json:"last_update"`
+	LastUpdate  int64        `json:"last_update"`
 }
 
 type UserMediaStat struct {
 	Key        UserMediaKey `json:"key" binding:"required"`
 	Date       *int64       `json:"date"`
 	Stats      *string      `json:"stats"`
-	LastUpdate *int64       `json:"last_update"`
+	LastUpdate int64        `json:"last_update"`
 }
 
 type LeaderboardKey struct {
