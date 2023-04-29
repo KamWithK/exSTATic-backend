@@ -52,6 +52,7 @@ type UserMediaStat struct {
 	Date       *int64       `json:"date"`
 	Stats      MediaStat    `json:"stats"`
 	LastUpdate int64        `json:"last_update"`
+	Pause      bool         `json:"pause"`
 }
 
 type LeaderboardKey struct {

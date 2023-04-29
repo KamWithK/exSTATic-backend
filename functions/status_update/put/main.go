@@ -19,12 +19,12 @@ var sess *session.Session
 var svc *dynamodb.DynamoDB
 
 type StatusArgs struct {
-	Key          dynamo_types.UserMediaKey `json:"key" binding:"required"`
-	Stats        dynamo_types.MediaStat    `json:"stats" binding:"required"`
-	DateTime     int64                     `json:"datetime" binding:"required"`
-	StatusChange bool                      `json:"status_change" binding:"required"`
-	Timezone     string                    `json:"timezone" binding:"required"`
-	MaxAFKTime   int16                     `json:"max_afk_time"`
+	Key        dynamo_types.UserMediaKey `json:"key" binding:"required"`
+	Stats      dynamo_types.MediaStat    `json:"stats" binding:"required"`
+	DateTime   int64                     `json:"datetime" binding:"required"`
+	Pause      bool                      `json:"status_change"`
+	Timezone   string                    `json:"timezone" binding:"required"`
+	MaxAFKTime int16                     `json:"max_afk_time"`
 }
 
 func init() {
@@ -95,9 +95,11 @@ func HandleRequest(ctx context.Context, statusArgs StatusArgs) error {
 
 	// If the last update is over the threshold update the stats
 	// Otherwise set the stats to empty and the current time as last updated
-	if timeDifference < time.Duration(statusArgs.MaxAFKTime)*time.Second {
+	if !currentStats.Pause && timeDifference < time.Duration(statusArgs.MaxAFKTime)*time.Second {
 		currentStats.Stats.TimeRead += int64(timeDifference.Seconds())
 	}
+
+	currentStats.Pause = statusArgs.Pause
 
 	// Put item
 	updateExpression, expressionAttributeNames, expressionAttributeValues := dynamo_types.CreateUpdateExpressionAttributes(currentStats)
