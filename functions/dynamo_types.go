@@ -41,10 +41,16 @@ type UserMediaEntry struct {
 	LastUpdate  int64        `json:"last_update"`
 }
 
+type MediaStat struct {
+	TimeRead  int64 `json:"time_read" binding:"required"`
+	CharsRead int64 `json:"chars_read" binding:"required"`
+	LinesRead int64 `json:"lines_read"`
+}
+
 type UserMediaStat struct {
 	Key        UserMediaKey `json:"key" binding:"required"`
 	Date       *int64       `json:"date"`
-	Stats      *string      `json:"stats"`
+	Stats      MediaStat    `json:"stats"`
 	LastUpdate int64        `json:"last_update"`
 }
 
