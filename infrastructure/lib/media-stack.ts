@@ -15,31 +15,39 @@ export class MediaStack extends Stack {
 
     constructor(scope: Construct, id: string, props: MediaStackProps) {
         super(scope, id, props);
-        
+
         const mediaInfoGetFunction = new GoFunction(this, 'mediaInfoGetFunction', {
             entry: FUNCTIONS_FOLDER + 'media_info/get'
         });
         const mediaInfoPutFunction = new GoFunction(this, 'mediaInfoPutFunction', {
             entry: FUNCTIONS_FOLDER + 'media_info/put'
         });
-        
-        const backfillFunction = new GoFunction(this, 'backfillFunction', {
-            entry: FUNCTIONS_FOLDER + 'backfill'
+        const backfillGetFunction = new GoFunction(this, 'backfillGetFunction', {
+            entry: FUNCTIONS_FOLDER + 'backfill/get'
         });
-        
-        const statusUpdateFunction = new GoFunction(this, 'statusUpdateFunction', {
-            entry: FUNCTIONS_FOLDER + 'status_update'
+        const backfillPutFunction = new GoFunction(this, 'backfillPutFunction', {
+            entry: FUNCTIONS_FOLDER + 'backfill/put'
         });
-        
+        const statusUpdateGetFunction = new GoFunction(this, 'statusUpdateGetFunction', {
+            entry: FUNCTIONS_FOLDER + 'status_update/get'
+        });
+        const statusUpdatePutFunction = new GoFunction(this, 'statusUpdatePutFunction', {
+            entry: FUNCTIONS_FOLDER + 'status_update/put'
+        });
+
         props.mediaTable.grantReadWriteData(mediaInfoGetFunction);
         props.mediaTable.grantReadWriteData(mediaInfoPutFunction);
-        props.mediaTable.grantReadWriteData(backfillFunction);
-        props.mediaTable.grantReadWriteData(statusUpdateFunction);
+        props.mediaTable.grantReadWriteData(backfillGetFunction);
+        props.mediaTable.grantReadWriteData(backfillPutFunction);
+        props.mediaTable.grantReadWriteData(statusUpdateGetFunction);
+        props.mediaTable.grantReadWriteData(statusUpdatePutFunction);
 
-        const mediaInfoGetIntegration = new HttpLambdaIntegration('mediaInfoIntegration', mediaInfoGetFunction);
-        const mediaInfoPutIntegration = new HttpLambdaIntegration('mediaInfoIntegration', mediaInfoPutFunction);
-        const backfillIntegration = new HttpLambdaIntegration('backfillIntegration', backfillFunction);
-        const statusUpdateIntegration = new HttpLambdaIntegration('statusUpdateIntegration', statusUpdateFunction);
+        const mediaInfoGetIntegration = new HttpLambdaIntegration('mediaInfoGetIntegration', mediaInfoGetFunction);
+        const mediaInfoPutIntegration = new HttpLambdaIntegration('mediaInfoPutIntegration', mediaInfoPutFunction);
+        const backfillGetIntegration = new HttpLambdaIntegration('backfillGetIntegration', backfillGetFunction);
+        const backfillPutIntegration = new HttpLambdaIntegration('backfillPutIntegration', backfillPutFunction);
+        const statusUpdateGetIntegration = new HttpLambdaIntegration('statusUpdateGetIntegration', statusUpdateGetFunction);
+        const statusUpdatePutIntegration = new HttpLambdaIntegration('statusUpdatePutIntegration', statusUpdatePutFunction);
 
         const mediaInfoGetRouteOptions: AddRoutesOptions = {
             path: '/mediaInfo/get',
@@ -51,22 +59,34 @@ export class MediaStack extends Stack {
             methods: [HttpMethod.PUT],
             integration: mediaInfoPutIntegration
         };
-        const backfillRouteOptions: AddRoutesOptions = {
-            path: '/backfill',
-            methods: [HttpMethod.ANY],
-            integration: backfillIntegration
+        const backfillGetRouteOptions: AddRoutesOptions = {
+            path: '/backfill/get',
+            methods: [HttpMethod.GET],
+            integration: backfillGetIntegration
         };
-        const statusUpdateRouteOptions: AddRoutesOptions = {
-            path: '/statusUpdate',
-            methods: [HttpMethod.ANY],
-            integration: statusUpdateIntegration
+        const backfillPutRouteOptions: AddRoutesOptions = {
+            path: '/backfill/put',
+            methods: [HttpMethod.PUT],
+            integration: backfillPutIntegration
+        };
+        const statusUpdateGetRouteOptions: AddRoutesOptions = {
+            path: '/statusUpdate/get',
+            methods: [HttpMethod.GET],
+            integration: statusUpdateGetIntegration
+        };
+        const statusUpdatePutRouteOptions: AddRoutesOptions = {
+            path: '/statusUpdate/put',
+            methods: [HttpMethod.PUT],
+            integration: statusUpdatePutIntegration
         };
 
         this.routeOptions = [
             mediaInfoGetRouteOptions,
             mediaInfoPutRouteOptions,
-            backfillRouteOptions,
-            statusUpdateRouteOptions
+            backfillGetRouteOptions,
+            backfillPutRouteOptions,
+            statusUpdateGetRouteOptions,
+            statusUpdatePutRouteOptions
         ];
     }
 }
