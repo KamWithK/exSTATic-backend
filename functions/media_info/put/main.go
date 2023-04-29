@@ -25,8 +25,7 @@ func init() {
 }
 
 func HandleRequest(ctx context.Context, userMediaEntry dynamo_types.UserMediaEntry) error {
-	var timeNow = time.Now().Unix()
-	userMediaEntry.LastUpdate = &timeNow
+	userMediaEntry.LastUpdate = time.Now().Unix()
 
 	var compositeKey = dynamo_types.CompositeKey{
 		PK: userMediaEntry.Key.MediaType + "#" + userMediaEntry.Key.Username,
