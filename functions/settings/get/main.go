@@ -47,6 +47,7 @@ func HandleRequest(ctx context.Context, key dynamo_types.UserSettingsKey) (*dyna
 	if err := dynamodbattribute.UnmarshalMap(result.Item, &optionArgs); err != nil {
 		return nil, fmt.Errorf("Error unmarshalling item: %s", err.Error())
 	}
+	optionArgs.Key = key
 
 	return &optionArgs, nil
 }
