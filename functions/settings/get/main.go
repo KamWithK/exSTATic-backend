@@ -39,7 +39,7 @@ func HandleRequest(ctx context.Context, key dynamo_types.UserSettingsKey) (*dyna
 		return nil, fmt.Errorf("Error getting DynamoDB item: %s", getErr.Error())
 	}
 
-	if result.Item == nil {
+	if result.Item == nil || len(result.Item) == 0 {
 		return nil, fmt.Errorf("Item not found in table")
 	}
 
