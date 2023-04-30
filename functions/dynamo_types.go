@@ -1,8 +1,10 @@
 package dynamo_types
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -102,4 +104,28 @@ func CreateUpdateExpressionAttributes(optionArgs interface{}) (string, map[strin
 	}
 
 	return updateExpression, expressionAttributeNames, expressionAttributeValues
+}
+
+func WhichDay(dateTime int64, timezone string, offset int) (int64, error) {
+	timeNow := time.Unix(dateTime, 0)
+
+	location, locationErr := time.LoadLocation(timezone)
+	if locationErr != nil {
+		return 0, fmt.Errorf("Error loading location: %s", locationErr.Error())
+	}
+	localTime := timeNow.In(location)
+
+	morningMarker := time.Date(localTime.Year(), localTime.Month(), localTime.Day(), offset, 0, 0, 0, location)
+
+	// Use the Unix timestamp of 4 am to mark a day
+	var targetDay time.Time
+
+	// If the current local time is before 4 am then set the current day to yesterday, else to today
+	if localTime.Before(morningMarker) {
+		targetDay = time.Date(localTime.Year(), localTime.Month(), localTime.Day()-1, 0, 0, 0, 0, time.UTC)
+	} else {
+		targetDay = time.Date(localTime.Year(), localTime.Month(), localTime.Day(), 0, 0, 0, 0, time.UTC)
+	}
+
+	return targetDay.Unix(), nil
 }

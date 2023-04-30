@@ -37,23 +37,10 @@ func init() {
 func HandleRequest(ctx context.Context, statusArgs StatusArgs) error {
 	timeNow := time.Unix(statusArgs.DateTime, 0)
 
-	location, locationErr := time.LoadLocation(statusArgs.Timezone)
-	if locationErr != nil {
-		return fmt.Errorf("Error loading location: %s", locationErr.Error())
-	}
-	localTimeNow := timeNow.In(location)
+	targetDay, err := dynamo_types.WhichDay(timeNow.Unix(), statusArgs.Timezone, 4)
 
-	// Get 4:00 am local time
-	morningMarker := time.Date(localTimeNow.Year(), localTimeNow.Month(), localTimeNow.Day(), 4, 0, 0, 0, location)
-
-	// Use the Unix timestamp of 4 am to mark a day
-	var targetDay int64
-
-	// If the current local time is before 4 am then set the current day to yesterday, else to today
-	if localTimeNow.Before(morningMarker) {
-		targetDay = morningMarker.AddDate(0, 0, -1).Unix()
-	} else {
-		targetDay = morningMarker.Unix()
+	if err != nil {
+		return fmt.Errorf("Error converting timezone: %s", err.Error())
 	}
 
 	// Get key which represents this media today
