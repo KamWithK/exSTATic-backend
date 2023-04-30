@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -46,7 +45,7 @@ func HandleRequest(ctx context.Context, statusArgs StatusArgs) error {
 	// Get key which represents this media today
 	var compositeKey = dynamo_types.CompositeKey{
 		PK: statusArgs.Key.MediaType + "#" + statusArgs.Key.Username,
-		SK: strconv.FormatInt(targetDay, 10) + "#" + statusArgs.Key.MediaIdentifier,
+		SK: dynamo_types.ZeroPadInt64(targetDay) + "#" + statusArgs.Key.MediaIdentifier,
 	}
 
 	tableKey, keyErr := dynamodbattribute.MarshalMap(compositeKey)

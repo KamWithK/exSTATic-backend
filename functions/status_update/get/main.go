@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
@@ -32,7 +31,7 @@ func init() {
 func HandleRequest(ctx context.Context, dateArgs DateArgs) (*dynamo_types.UserMediaStat, error) {
 	var compositeKey = dynamo_types.CompositeKey{
 		PK: dateArgs.Key.MediaType + "#" + dateArgs.Key.Username,
-		SK: strconv.FormatInt(dateArgs.DateTime, 10) + "#" + dateArgs.Key.MediaIdentifier,
+		SK: dynamo_types.ZeroPadInt64(dateArgs.DateTime) + "#" + dateArgs.Key.MediaIdentifier,
 	}
 
 	tableKey, keyErr := dynamodbattribute.MarshalMap(compositeKey)

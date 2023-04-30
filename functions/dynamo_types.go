@@ -3,6 +3,7 @@ package dynamo_types
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -68,6 +69,10 @@ type LeaderboardEntry struct {
 	MediaNames string         `json:"media_names"`
 	TimeRead   int64          `json:"time_read"`
 	CharsRead  int64          `json:"chars_read"`
+}
+
+func ZeroPadInt64(number int64) string {
+	return fmt.Sprintf("%0*d", strconv.IntSize/4, number)
 }
 
 func AddAttributeIfNotNull(updateExpression string, expressionAttributeNames map[string]*string, expressionAttributeValues map[string]*dynamodb.AttributeValue, attributeName, jsonAttributeName string, value interface{}) (string, map[string]*string, map[string]*dynamodb.AttributeValue) {
