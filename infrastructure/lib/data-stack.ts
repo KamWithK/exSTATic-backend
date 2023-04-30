@@ -56,7 +56,7 @@ export class DataStack extends Stack {
         this.mediaTable.addLocalSecondaryIndex({
             indexName: 'lastUpdatedIndex',
             sortKey: {
-                name: 'last_updated',
+                name: 'last_update',
                 type: AttributeType.NUMBER
             },
             projectionType: ProjectionType.ALL
