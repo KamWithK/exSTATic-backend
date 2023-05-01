@@ -39,7 +39,7 @@ type UserMediaKey struct {
 
 type UserMediaEntry struct {
 	Key         UserMediaKey `json:"key" binding:"required"`
-	DisplayName *string      `json:"display_type"`
+	DisplayName string       `json:"display_type"`
 	Series      string       `json:"series"`
 	LastUpdate  int64        `json:"last_update"`
 }
