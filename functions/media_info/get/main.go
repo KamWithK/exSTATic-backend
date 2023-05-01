@@ -24,14 +24,9 @@ func init() {
 }
 
 func HandleRequest(ctx context.Context, key dynamo_types.UserMediaKey) (*dynamo_types.UserSettings, error) {
-	var compositeKey = dynamo_types.CompositeKey{
-		PK: key.MediaType + "#" + key.Username,
-		SK: key.MediaIdentifier,
-	}
-
-	tableKey, keyErr := dynamodbattribute.MarshalMap(compositeKey)
+	tableKey, keyErr := dynamo_types.GetCompositeKey(key.MediaType+"#"+key.Username, key.MediaIdentifier)
 	if keyErr != nil {
-		return nil, fmt.Errorf("Error marshalling key: %s", keyErr.Error())
+		return nil, fmt.Errorf("Error getting table key: %s", keyErr.Error())
 	}
 
 	result, getErr := svc.GetItem(&dynamodb.GetItemInput{

@@ -42,13 +42,9 @@ func init() {
 
 func getDay(targetDay int64, key dynamo_types.UserMediaKey) (map[string]*dynamodb.AttributeValue, *dynamo_types.UserMediaStat, error) {
 	// Get key which represents this media today
-	var compositeKey = dynamo_types.CompositeKey{
-		PK: key.MediaType + "#" + key.Username,
-		SK: dynamo_types.ZeroPadInt64(targetDay) + "#" + key.MediaIdentifier,
-	}
-	tableKey, keyErr := dynamodbattribute.MarshalMap(compositeKey)
+	tableKey, keyErr := dynamo_types.GetCompositeKey(key.MediaType+"#"+key.Username, dynamo_types.ZeroPadInt64(targetDay)+"#"+key.MediaIdentifier)
 	if keyErr != nil {
-		return nil, nil, fmt.Errorf("Error marshalling key: %s", keyErr.Error())
+		return nil, nil, fmt.Errorf("Error getting table key: %s", keyErr.Error())
 	}
 
 	// Get entry from database if it exists
@@ -157,17 +153,8 @@ func HandleRequest(ctx context.Context, statusArgs StatusArgs) error {
 	// Process time data
 	processProgress(&statusArgs, userMediaStats, 4)
 
-	// Get dynamodb query information
-	updateExpression, expressionAttributeNames, expressionAttributeValues := dynamo_types.CreateUpdateExpressionAttributes(userMediaStats)
-
 	// Put item
-	_, updateErr := svc.UpdateItem(&dynamodb.UpdateItemInput{
-		TableName:                 aws.String("media"),
-		Key:                       tableKey,
-		UpdateExpression:          aws.String(updateExpression),
-		ExpressionAttributeNames:  expressionAttributeNames,
-		ExpressionAttributeValues: expressionAttributeValues,
-	})
+	_, updateErr := dynamo_types.UpdateItem(svc, "media", tableKey, userMediaStats)
 	if updateErr != nil {
 		return fmt.Errorf("Error updating DynamoDB item: %s", updateErr.Error())
 	}

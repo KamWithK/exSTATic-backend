@@ -6,10 +6,8 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 
 	dynamo_types "github.com/KamWithK/exSTATic-backend"
 )
@@ -27,25 +25,12 @@ func init() {
 func HandleRequest(ctx context.Context, userMediaEntry dynamo_types.UserMediaEntry) error {
 	userMediaEntry.LastUpdate = time.Now().Unix()
 
-	var compositeKey = dynamo_types.CompositeKey{
-		PK: userMediaEntry.Key.MediaType + "#" + userMediaEntry.Key.Username,
-		SK: userMediaEntry.Key.MediaIdentifier,
-	}
-
-	tableKey, keyErr := dynamodbattribute.MarshalMap(compositeKey)
+	tableKey, keyErr := dynamo_types.GetCompositeKey(userMediaEntry.Key.MediaType+"#"+userMediaEntry.Key.Username, userMediaEntry.Key.MediaIdentifier)
 	if keyErr != nil {
-		return fmt.Errorf("Error marshalling key: %s", keyErr.Error())
+		return fmt.Errorf("Error getting table key: %s", keyErr.Error())
 	}
 
-	updateExpression, expressionAttributeNames, expressionAttributeValues := dynamo_types.CreateUpdateExpressionAttributes(userMediaEntry)
-
-	_, updateErr := svc.UpdateItem(&dynamodb.UpdateItemInput{
-		TableName:                 aws.String("media"),
-		Key:                       tableKey,
-		UpdateExpression:          aws.String(updateExpression),
-		ExpressionAttributeNames:  expressionAttributeNames,
-		ExpressionAttributeValues: expressionAttributeValues,
-	})
+	_, updateErr := dynamo_types.UpdateItem(svc, "media", tableKey, userMediaEntry)
 	if updateErr != nil {
 		return fmt.Errorf("Error updating DynamoDB item: %s", updateErr.Error())
 	}

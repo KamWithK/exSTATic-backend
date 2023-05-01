@@ -110,3 +110,31 @@ func CreateUpdateExpressionAttributes(optionArgs interface{}) (string, map[strin
 
 	return updateExpression, expressionAttributeNames, expressionAttributeValues
 }
+
+func GetCompositeKey(pk interface{}, sk interface{}) (map[string]*dynamodb.AttributeValue, error) {
+	var compositeKey = CompositeKey{
+		PK: pk,
+		SK: sk,
+	}
+
+	tableKey, keyErr := dynamodbattribute.MarshalMap(compositeKey)
+	if keyErr != nil {
+		return nil, fmt.Errorf("Error marshalling key: %s", keyErr.Error())
+	}
+
+	return tableKey, nil
+}
+
+func UpdateItem(svc *dynamodb.DynamoDB, tableName string, tableKey map[string]*dynamodb.AttributeValue, tableData interface{}) (*dynamodb.UpdateItemOutput, error) {
+	// Get dynamodb query information
+	updateExpression, expressionAttributeNames, expressionAttributeValues := CreateUpdateExpressionAttributes(tableData)
+
+	// Put item
+	return svc.UpdateItem(&dynamodb.UpdateItemInput{
+		TableName:                 aws.String(tableName),
+		Key:                       tableKey,
+		UpdateExpression:          aws.String(updateExpression),
+		ExpressionAttributeNames:  expressionAttributeNames,
+		ExpressionAttributeValues: expressionAttributeValues,
+	})
+}

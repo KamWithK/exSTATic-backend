@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
@@ -29,15 +28,7 @@ func HandleRequest(ctx context.Context, options dynamo_types.UserSettings) error
 		return fmt.Errorf("Error marshalling key: %s", keyErr.Error())
 	}
 
-	updateExpression, expressionAttributeNames, expressionAttributeValues := dynamo_types.CreateUpdateExpressionAttributes(options)
-
-	_, updateErr := svc.UpdateItem(&dynamodb.UpdateItemInput{
-		TableName:                 aws.String("settings"),
-		Key:                       tableKey,
-		UpdateExpression:          aws.String(updateExpression),
-		ExpressionAttributeNames:  expressionAttributeNames,
-		ExpressionAttributeValues: expressionAttributeValues,
-	})
+	_, updateErr := dynamo_types.UpdateItem(svc, "settings", tableKey, options)
 	if updateErr != nil {
 		return fmt.Errorf("Error updating DynamoDB item: %s", updateErr.Error())
 	}
