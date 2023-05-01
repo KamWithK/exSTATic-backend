@@ -25,7 +25,6 @@ func init() {
 
 func HandleRequest(ctx context.Context, options dynamo_types.UserSettings) error {
 	tableKey, keyErr := dynamodbattribute.MarshalMap(options.Key)
-
 	if keyErr != nil {
 		return fmt.Errorf("Error marshalling key: %s", keyErr.Error())
 	}
@@ -39,7 +38,6 @@ func HandleRequest(ctx context.Context, options dynamo_types.UserSettings) error
 		ExpressionAttributeNames:  expressionAttributeNames,
 		ExpressionAttributeValues: expressionAttributeValues,
 	})
-
 	if updateErr != nil {
 		return fmt.Errorf("Error updating DynamoDB item: %s", updateErr.Error())
 	}

@@ -61,8 +61,8 @@ func getDay(targetDay int64, key dynamo_types.UserMediaKey) (map[string]*dynamod
 	}
 
 	currentStats := dynamo_types.UserMediaStat{}
-	if err := dynamodbattribute.UnmarshalMap(result.Item, &currentStats); err != nil {
-		return nil, nil, fmt.Errorf("Error unmarshalling item: %s", err.Error())
+	if unmarshalErr := dynamodbattribute.UnmarshalMap(result.Item, &currentStats); unmarshalErr != nil {
+		return nil, nil, fmt.Errorf("Error unmarshalling item: %s", unmarshalErr.Error())
 	}
 
 	currentStats.Key = key
@@ -99,9 +99,9 @@ func whichDay(dateTime int64, timezone string, key dynamo_types.UserMediaKey) (m
 	}
 
 	// Get yesterdays stats
-	yesterdayTableKey, userMediaStats, err := getDay(yesterday.Unix(), key)
-	if err != nil {
-		return nil, nil, err
+	yesterdayTableKey, userMediaStats, getDayErr := getDay(yesterday.Unix(), key)
+	if getDayErr != nil {
+		return nil, nil, getDayErr
 	}
 
 	// Continuous immersion with under an hour break constitutes a continuation of yesterday
@@ -149,17 +149,18 @@ func HandleRequest(ctx context.Context, statusArgs StatusArgs) error {
 	}
 
 	// Find day
-	tableKey, userMediaStats, err := whichDay(givenTime.Unix(), statusArgs.Timezone, statusArgs.Key)
-	if err != nil {
-		return fmt.Errorf("Error extracting the current day: %s", err)
+	tableKey, userMediaStats, findDayErr := whichDay(givenTime.Unix(), statusArgs.Timezone, statusArgs.Key)
+	if findDayErr != nil {
+		return fmt.Errorf("Error extracting the current day: %s", findDayErr)
 	}
 
 	// Process time data
 	processProgress(&statusArgs, userMediaStats, 4)
 
-	// Put item
+	// Get dynamodb query information
 	updateExpression, expressionAttributeNames, expressionAttributeValues := dynamo_types.CreateUpdateExpressionAttributes(userMediaStats)
 
+	// Put item
 	_, updateErr := svc.UpdateItem(&dynamodb.UpdateItemInput{
 		TableName:                 aws.String("media"),
 		Key:                       tableKey,

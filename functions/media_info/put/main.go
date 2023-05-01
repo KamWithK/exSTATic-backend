@@ -33,7 +33,6 @@ func HandleRequest(ctx context.Context, userMediaEntry dynamo_types.UserMediaEnt
 	}
 
 	tableKey, keyErr := dynamodbattribute.MarshalMap(compositeKey)
-
 	if keyErr != nil {
 		return fmt.Errorf("Error marshalling key: %s", keyErr.Error())
 	}
@@ -47,7 +46,6 @@ func HandleRequest(ctx context.Context, userMediaEntry dynamo_types.UserMediaEnt
 		ExpressionAttributeNames:  expressionAttributeNames,
 		ExpressionAttributeValues: expressionAttributeValues,
 	})
-
 	if updateErr != nil {
 		return fmt.Errorf("Error updating DynamoDB item: %s", updateErr.Error())
 	}

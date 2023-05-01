@@ -35,7 +35,6 @@ func HandleRequest(ctx context.Context, dateArgs DateArgs) (*dynamo_types.UserMe
 	}
 
 	tableKey, keyErr := dynamodbattribute.MarshalMap(compositeKey)
-
 	if keyErr != nil {
 		return nil, fmt.Errorf("Error marshalling key: %s", keyErr.Error())
 	}
@@ -44,7 +43,6 @@ func HandleRequest(ctx context.Context, dateArgs DateArgs) (*dynamo_types.UserMe
 		TableName: aws.String("media"),
 		Key:       tableKey,
 	})
-
 	if getErr != nil {
 		return nil, fmt.Errorf("Error getting DynamoDB item: %s", getErr.Error())
 	}
@@ -54,8 +52,8 @@ func HandleRequest(ctx context.Context, dateArgs DateArgs) (*dynamo_types.UserMe
 	}
 
 	mediaStats := dynamo_types.UserMediaStat{}
-	if err := dynamodbattribute.UnmarshalMap(result.Item, &mediaStats); err != nil {
-		return nil, fmt.Errorf("Error unmarshalling item: %s", err.Error())
+	if unmarshalErr := dynamodbattribute.UnmarshalMap(result.Item, &mediaStats); unmarshalErr != nil {
+		return nil, fmt.Errorf("Error unmarshalling item: %s", unmarshalErr.Error())
 	}
 	mediaStats.Key = dateArgs.Key
 
