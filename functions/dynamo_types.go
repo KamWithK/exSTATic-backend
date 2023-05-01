@@ -185,12 +185,13 @@ func PutItemRequest(svc *dynamodb.DynamoDB, tableKey map[string]*dynamodb.Attrib
 	}, nil
 }
 
-func BatchWriteItems(svc *dynamodb.DynamoDB, tableName string, items []*dynamodb.WriteRequest, maxBatchSize int) []error {
+func BatchWriteItems(svc *dynamodb.DynamoDB, tableName string, items []*dynamodb.WriteRequest, maxBatchSize int) ([]*dynamodb.WriteRequest, []error) {
 	errors := []error{}
+	unprocessedWrites := []*dynamodb.WriteRequest{}
 
 	if maxBatchSize < 1 || maxBatchSize > 25 {
 		errors = append(errors, fmt.Errorf("Invalid maxBatchSize: %d. Valid sizes are between 1 and 25", maxBatchSize))
-		return errors
+		return nil, errors
 	}
 
 	totalItems := len(items)
@@ -200,16 +201,18 @@ func BatchWriteItems(svc *dynamodb.DynamoDB, tableName string, items []*dynamodb
 			end = totalItems
 		}
 
-		_, err := svc.BatchWriteItem(&dynamodb.BatchWriteItemInput{
+		output, err := svc.BatchWriteItem(&dynamodb.BatchWriteItemInput{
 			RequestItems: map[string][]*dynamodb.WriteRequest{
 				tableName: items[i:end],
 			},
 		})
-
 		if err != nil {
 			errors = append(errors, fmt.Errorf("Error in BatchWriteItem (batch %d-%d): %s", i, end-1, err.Error()))
 		}
+
+		remainingWrites := output.UnprocessedItems[tableName]
+		unprocessedWrites = append(unprocessedWrites, remainingWrites...)
 	}
 
-	return errors
+	return unprocessedWrites, errors
 }

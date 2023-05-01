@@ -42,7 +42,7 @@ func putRequest(pk string, sk string, userMedia interface{}) (*dynamodb.WriteReq
 	return writeRequest, nil
 }
 
-func HandleRequest(ctx context.Context, history BackfillArgs) []error {
+func HandleRequest(ctx context.Context, history BackfillArgs) ([]*dynamodb.WriteRequest, []error) {
 	username := history.Username
 
 	writeRequests := []*dynamodb.WriteRequest{}
@@ -66,7 +66,9 @@ func HandleRequest(ctx context.Context, history BackfillArgs) []error {
 		writeRequests = append(writeRequests, writeRequest)
 	}
 
-	return append(errors, dynamo_types.BatchWriteItems(svc, "media", writeRequests, 25)...)
+	unprocessedWrites, batchErrs := dynamo_types.BatchWriteItems(svc, "media", writeRequests, 25)
+
+	return unprocessedWrites, append(errors, batchErrs...)
 }
 
 func main() {
