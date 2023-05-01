@@ -87,7 +87,7 @@ func HandleRequest(ctx context.Context, statusArgs StatusArgs) error {
 
 	// If the last update is over the threshold update the stats
 	// Otherwise set the stats to empty and the current time as last updated
-	if !currentStats.Pause && timeDifference < time.Duration(statusArgs.MaxAFKTime)*time.Second {
+	if !currentStats.Pause && timeDifference > 0 && timeDifference < time.Duration(statusArgs.MaxAFKTime)*time.Second {
 		currentStats.Stats.TimeRead += int64(timeDifference.Seconds())
 	}
 
