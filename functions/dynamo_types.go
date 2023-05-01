@@ -37,17 +37,17 @@ type UserMediaKey struct {
 	MediaIdentifier string `json:"media_identifier"`
 }
 
+type MediaStat struct {
+	TimeRead  int64 `json:"time_read" binding:"required"`
+	CharsRead int64 `json:"chars_read" binding:"required"`
+	LinesRead int64 `json:"lines_read"`
+}
+
 type UserMediaEntry struct {
 	Key         UserMediaKey `json:"key" binding:"required"`
 	DisplayName string       `json:"display_type"`
 	Series      string       `json:"series"`
 	LastUpdate  int64        `json:"last_update"`
-}
-
-type MediaStat struct {
-	TimeRead  int64 `json:"time_read" binding:"required"`
-	CharsRead int64 `json:"chars_read" binding:"required"`
-	LinesRead int64 `json:"lines_read"`
 }
 
 type UserMediaStat struct {
@@ -125,6 +125,19 @@ func GetCompositeKey(pk interface{}, sk interface{}) (map[string]*dynamodb.Attri
 	return tableKey, nil
 }
 
+func CombineAttributes(firstAttributes map[string]*dynamodb.AttributeValue, secondAttributes map[string]*dynamodb.AttributeValue) map[string]*dynamodb.AttributeValue {
+	combinedAttributes := map[string]*dynamodb.AttributeValue{}
+
+	for k, v := range firstAttributes {
+		combinedAttributes[k] = v
+	}
+	for k, v := range secondAttributes {
+		combinedAttributes[k] = v
+	}
+
+	return combinedAttributes
+}
+
 func UpdateItem(svc *dynamodb.DynamoDB, tableName string, tableKey map[string]*dynamodb.AttributeValue, tableData interface{}) (*dynamodb.UpdateItemOutput, error) {
 	// Get dynamodb query information
 	updateExpression, expressionAttributeNames, expressionAttributeValues := CreateUpdateExpressionAttributes(tableData)
@@ -137,4 +150,66 @@ func UpdateItem(svc *dynamodb.DynamoDB, tableName string, tableKey map[string]*d
 		ExpressionAttributeNames:  expressionAttributeNames,
 		ExpressionAttributeValues: expressionAttributeValues,
 	})
+}
+
+func PutItem(svc *dynamodb.DynamoDB, tableName string, tableKey map[string]*dynamodb.AttributeValue, itemData interface{}) (*dynamodb.PutItemOutput, error) {
+	// Convert item data to DynamoDB attribute values
+	itemAttributes, err := dynamodbattribute.MarshalMap(itemData)
+	if err != nil {
+		return nil, fmt.Errorf("Error marshalling item: %s", err.Error())
+	}
+
+	delete(itemAttributes, "key")
+
+	// Put the item
+	return svc.PutItem(&dynamodb.PutItemInput{
+		TableName: aws.String(tableName),
+		Item:      CombineAttributes(tableKey, itemAttributes),
+	})
+}
+
+func PutItemRequest(svc *dynamodb.DynamoDB, tableKey map[string]*dynamodb.AttributeValue, itemData interface{}) (*dynamodb.WriteRequest, error) {
+	// Convert item data to DynamoDB attribute values
+	itemAttributes, err := dynamodbattribute.MarshalMap(itemData)
+	if err != nil {
+		return nil, fmt.Errorf("Error marshalling item: %s", err.Error())
+	}
+
+	delete(itemAttributes, "key")
+
+	// Put the item
+	return &dynamodb.WriteRequest{
+		PutRequest: &dynamodb.PutRequest{
+			Item: CombineAttributes(tableKey, itemAttributes),
+		},
+	}, nil
+}
+
+func BatchWriteItems(svc *dynamodb.DynamoDB, tableName string, items []*dynamodb.WriteRequest, maxBatchSize int) []error {
+	errors := []error{}
+
+	if maxBatchSize < 1 || maxBatchSize > 25 {
+		errors = append(errors, fmt.Errorf("Invalid maxBatchSize: %d. Valid sizes are between 1 and 25", maxBatchSize))
+		return errors
+	}
+
+	totalItems := len(items)
+	for i := 0; i < totalItems; i += maxBatchSize {
+		end := i + maxBatchSize
+		if end > totalItems {
+			end = totalItems
+		}
+
+		_, err := svc.BatchWriteItem(&dynamodb.BatchWriteItemInput{
+			RequestItems: map[string][]*dynamodb.WriteRequest{
+				tableName: items[i:end],
+			},
+		})
+
+		if err != nil {
+			errors = append(errors, fmt.Errorf("Error in BatchWriteItem (batch %d-%d): %s", i, end-1, err.Error()))
+		}
+	}
+
+	return errors
 }
