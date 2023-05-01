@@ -34,9 +34,15 @@ func init() {
 }
 
 func HandleRequest(ctx context.Context, statusArgs StatusArgs) error {
-	timeNow := time.Unix(statusArgs.DateTime, 0)
+	timeNow := time.Now()
+	givenTime := time.Unix(statusArgs.DateTime, 0)
 
-	targetDay, err := dynamo_types.WhichDay(timeNow.Unix(), statusArgs.Timezone, 4)
+	// Anti-cheat measure
+	if timeNow.Sub(givenTime) > 24*time.Hour {
+		return fmt.Errorf("Time error: Given time is more than 24 hours in the past")
+	}
+
+	targetDay, err := dynamo_types.WhichDay(givenTime.Unix(), statusArgs.Timezone, 4)
 
 	if err != nil {
 		return fmt.Errorf("Error converting timezone: %s", err.Error())
@@ -70,11 +76,11 @@ func HandleRequest(ctx context.Context, statusArgs StatusArgs) error {
 	}
 
 	previousUpdate := time.Unix(currentStats.LastUpdate, 0)
-	timeDifference := timeNow.Sub(previousUpdate)
+	timeDifference := givenTime.Sub(previousUpdate)
 
 	currentStats.Key = statusArgs.Key
 	currentStats.Date = &targetDay
-	currentStats.LastUpdate = timeNow.Unix()
+	currentStats.LastUpdate = givenTime.Unix()
 
 	currentStats.Stats.CharsRead += statusArgs.Stats.CharsRead
 	currentStats.Stats.LinesRead += statusArgs.Stats.LinesRead
