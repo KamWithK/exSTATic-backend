@@ -7,7 +7,8 @@ import { AddRoutesOptions, HttpMethod } from '@aws-cdk/aws-apigatewayv2-alpha';
 import { FUNCTIONS_FOLDER } from '../config';
 
 export interface MediaStackProps extends StackProps {
-    mediaTable: Table
+    mediaTable: Table,
+    leaderboardTable: Table
 }
 
 export class MediaStack extends Stack {
@@ -41,6 +42,9 @@ export class MediaStack extends Stack {
         props.mediaTable.grantReadWriteData(backfillPutFunction);
         props.mediaTable.grantReadWriteData(statusUpdateGetFunction);
         props.mediaTable.grantReadWriteData(statusUpdatePutFunction);
+
+        props.leaderboardTable.grantReadWriteData(backfillPutFunction);
+        props.leaderboardTable.grantReadWriteData(statusUpdatePutFunction);
 
         const mediaInfoGetIntegration = new HttpLambdaIntegration('mediaInfoGetIntegration', mediaInfoGetFunction);
         const mediaInfoPutIntegration = new HttpLambdaIntegration('mediaInfoPutIntegration', mediaInfoPutFunction);

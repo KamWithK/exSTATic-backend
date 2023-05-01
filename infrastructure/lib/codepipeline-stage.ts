@@ -27,7 +27,8 @@ export class CodePipelineStage extends Stage {
             settingsTable: dataStack.settingsTable
         });
         const mediaStack = new MediaStack(this, 'mediaStack', {
-            mediaTable: dataStack.mediaTable
+            mediaTable: dataStack.mediaTable,
+            leaderboardTable: dataStack.leaderboardTable
         });
         const leaderboardStack = new LeaderboardStack(this, 'leaderboardStack', {
             leaderboardTable: dataStack.leaderboardTable
