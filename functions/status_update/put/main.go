@@ -17,11 +17,18 @@ import (
 var sess *session.Session
 var svc *dynamodb.DynamoDB
 
+var startOfTime = time.Unix(0, 0)
+var nightEnd, morningStart = 4, 6
+
+type ProgressStatus struct {
+	DateTime int64 `json:"datetime" binding:"required"`
+	Pause    bool  `json:"status_change"`
+}
+
 type StatusArgs struct {
 	Key        dynamo_types.UserMediaKey `json:"key" binding:"required"`
 	Stats      dynamo_types.MediaStat    `json:"stats" binding:"required"`
-	DateTime   int64                     `json:"datetime" binding:"required"`
-	Pause      bool                      `json:"status_change"`
+	Progress   []ProgressStatus          `json:"progress" binding:"required"`
 	Timezone   string                    `json:"timezone" binding:"required"`
 	MaxAFKTime int16                     `json:"max_afk_time"`
 }
@@ -33,31 +40,15 @@ func init() {
 	svc = dynamodb.New(sess)
 }
 
-func HandleRequest(ctx context.Context, statusArgs StatusArgs) error {
-	timeNow := time.Now()
-	givenTime := time.Unix(statusArgs.DateTime, 0)
-
-	// Anti-cheat measure
-	if timeNow.Sub(givenTime) > 24*time.Hour {
-		return fmt.Errorf("Time error: Given time is more than 24 hours in the past")
-	}
-
-	targetDay, err := dynamo_types.WhichDay(givenTime.Unix(), statusArgs.Timezone, 4)
-
-	if err != nil {
-		return fmt.Errorf("Error converting timezone: %s", err.Error())
-	}
-
+func getDay(targetDay int64, key dynamo_types.UserMediaKey) (map[string]*dynamodb.AttributeValue, *dynamo_types.UserMediaStat, error) {
 	// Get key which represents this media today
 	var compositeKey = dynamo_types.CompositeKey{
-		PK: statusArgs.Key.MediaType + "#" + statusArgs.Key.Username,
-		SK: dynamo_types.ZeroPadInt64(targetDay) + "#" + statusArgs.Key.MediaIdentifier,
+		PK: key.MediaType + "#" + key.Username,
+		SK: dynamo_types.ZeroPadInt64(targetDay) + "#" + key.MediaIdentifier,
 	}
-
 	tableKey, keyErr := dynamodbattribute.MarshalMap(compositeKey)
-
 	if keyErr != nil {
-		return fmt.Errorf("Error marshalling key: %s", keyErr.Error())
+		return nil, nil, fmt.Errorf("Error marshalling key: %s", keyErr.Error())
 	}
 
 	// Get entry from database if it exists
@@ -65,36 +56,109 @@ func HandleRequest(ctx context.Context, statusArgs StatusArgs) error {
 		TableName: aws.String("media"),
 		Key:       tableKey,
 	})
-
 	if getErr != nil {
-		return fmt.Errorf("Error getting DynamoDB item: %s", getErr.Error())
+		return nil, nil, fmt.Errorf("Error getting DynamoDB item: %s", getErr.Error())
 	}
 
 	currentStats := dynamo_types.UserMediaStat{}
 	if err := dynamodbattribute.UnmarshalMap(result.Item, &currentStats); err != nil {
-		return fmt.Errorf("Error unmarshalling item: %s", err.Error())
+		return nil, nil, fmt.Errorf("Error unmarshalling item: %s", err.Error())
 	}
 
-	previousUpdate := time.Unix(currentStats.LastUpdate, 0)
-	timeDifference := givenTime.Sub(previousUpdate)
-
-	currentStats.Key = statusArgs.Key
+	currentStats.Key = key
 	currentStats.Date = &targetDay
-	currentStats.LastUpdate = givenTime.Unix()
 
-	currentStats.Stats.CharsRead += statusArgs.Stats.CharsRead
-	currentStats.Stats.LinesRead += statusArgs.Stats.LinesRead
+	return tableKey, &currentStats, nil
+}
 
-	// If the last update is over the threshold update the stats
-	// Otherwise set the stats to empty and the current time as last updated
-	if !currentStats.Pause && timeDifference > 0 && timeDifference < time.Duration(statusArgs.MaxAFKTime)*time.Second {
-		currentStats.Stats.TimeRead += int64(timeDifference.Seconds())
+func whichDay(dateTime int64, timezone string, key dynamo_types.UserMediaKey) (map[string]*dynamodb.AttributeValue, *dynamo_types.UserMediaStat, error) {
+	// Given time
+	timeNow := time.Unix(dateTime, 0)
+
+	// Location information
+	location, locationErr := time.LoadLocation(timezone)
+	if locationErr != nil {
+		return nil, nil, fmt.Errorf("Error loading location: %s", locationErr.Error())
+	}
+	localTime := timeNow.In(location)
+
+	// Time markers
+	morningMarker := time.Date(localTime.Year(), localTime.Month(), localTime.Day(), morningStart, 0, 0, 0, location)
+	eveningMarker := time.Date(localTime.Year(), localTime.Month(), localTime.Day(), nightEnd, 0, 0, 0, location)
+	yesterday := time.Date(localTime.Year(), localTime.Month(), localTime.Day()-1, 0, 0, 0, 0, time.UTC)
+	today := time.Date(localTime.Year(), localTime.Month(), localTime.Day(), 0, 0, 0, 0, time.UTC)
+
+	// Anything before the evening marker is definitely yesterday
+	if localTime.Before(eveningMarker) {
+		return getDay(yesterday.Unix(), key)
 	}
 
-	currentStats.Pause = statusArgs.Pause
+	// Anything after the morning marker is definitely today
+	if localTime.After(morningMarker) {
+		return getDay(today.Unix(), key)
+	}
+
+	// Get yesterdays stats
+	yesterdayTableKey, userMediaStats, err := getDay(yesterday.Unix(), key)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Continuous immersion with under an hour break constitutes a continuation of yesterday
+	// Otherwise immersion occurs today
+	yesterdayLastUpdate := time.Unix(userMediaStats.LastUpdate, 0)
+	if timeNow.Before(yesterdayLastUpdate.Add(1 * time.Hour)) {
+		return yesterdayTableKey, userMediaStats, nil
+	} else {
+		return getDay(today.Unix(), key)
+	}
+}
+
+func processProgress(statusArgs *StatusArgs, previousSats *dynamo_types.UserMediaStat, morningStars int) {
+	// Set stats reference
+	stats := &previousSats.Stats
+	lastTime := time.Unix(previousSats.LastUpdate, 0)
+
+	previousSats.Stats.CharsRead += stats.CharsRead
+	previousSats.Stats.LinesRead += stats.LinesRead
+
+	// Consolidate the batch of read times together
+	for _, progress := range statusArgs.Progress {
+		progressTime := time.Unix(progress.DateTime, 0)
+		timeDifference := progressTime.Sub(lastTime)
+
+		// Update time read whilst reading and when times are strictly increasing
+		if !previousSats.Pause && timeDifference > 0 && timeDifference < time.Duration(statusArgs.MaxAFKTime)*time.Second {
+			stats.TimeRead += int64(timeDifference.Seconds())
+		}
+
+		// Last update variables pushed forwards
+		lastTime = progressTime
+		previousSats.LastUpdate = progress.DateTime
+		previousSats.Pause = progress.Pause
+	}
+}
+
+func HandleRequest(ctx context.Context, statusArgs StatusArgs) error {
+	timeNow := time.Now()
+	givenTime := time.Unix(statusArgs.Progress[0].DateTime, 0)
+
+	// Anti-cheat measure
+	if timeNow.Sub(givenTime) > 24*time.Hour {
+		return fmt.Errorf("Time error: First given time is more than 24 hours in the past")
+	}
+
+	// Find day
+	tableKey, userMediaStats, err := whichDay(givenTime.Unix(), statusArgs.Timezone, statusArgs.Key)
+	if err != nil {
+		return fmt.Errorf("Error extracting the current day: %s", err)
+	}
+
+	// Process time data
+	processProgress(&statusArgs, userMediaStats, 4)
 
 	// Put item
-	updateExpression, expressionAttributeNames, expressionAttributeValues := dynamo_types.CreateUpdateExpressionAttributes(currentStats)
+	updateExpression, expressionAttributeNames, expressionAttributeValues := dynamo_types.CreateUpdateExpressionAttributes(userMediaStats)
 
 	_, updateErr := svc.UpdateItem(&dynamodb.UpdateItemInput{
 		TableName:                 aws.String("media"),
@@ -103,7 +167,6 @@ func HandleRequest(ctx context.Context, statusArgs StatusArgs) error {
 		ExpressionAttributeNames:  expressionAttributeNames,
 		ExpressionAttributeValues: expressionAttributeValues,
 	})
-
 	if updateErr != nil {
 		return fmt.Errorf("Error updating DynamoDB item: %s", updateErr.Error())
 	}
