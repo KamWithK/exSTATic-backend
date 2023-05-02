@@ -76,7 +76,7 @@ export class HttpStepFunctionsIntegration extends HttpRouteIntegration {
         
         return {
             type: HttpIntegrationType.AWS_PROXY,
-            uri: `integrations/${httpStepFunctionIntegration.ref}`,
+            uri: this.props.stateMachine.stateMachineArn,
             payloadFormatVersion: PayloadFormatVersion.VERSION_1_0
         };
     }
