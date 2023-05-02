@@ -29,7 +29,7 @@ export class MediaStack extends Stack {
         const backfillGetFunction = new GoFunction(this, 'backfillGetFunction', {
             entry: FUNCTIONS_FOLDER + 'backfill/get'
         });
-        const backfillPutFunction = new GoFunction(this, 'backfillPutFunction', {
+        const backfillPostFunction = new GoFunction(this, 'backfillPostFunction', {
             entry: FUNCTIONS_FOLDER + 'backfill/put'
         });
         const statusUpdateGetFunction = new GoFunction(this, 'statusUpdateGetFunction', {
@@ -42,20 +42,20 @@ export class MediaStack extends Stack {
         props.mediaTable.grantReadWriteData(mediaInfoGetFunction);
         props.mediaTable.grantReadWriteData(mediaInfoPutFunction);
         props.mediaTable.grantReadWriteData(backfillGetFunction);
-        props.mediaTable.grantReadWriteData(backfillPutFunction);
+        props.mediaTable.grantReadWriteData(backfillPostFunction);
         props.mediaTable.grantReadWriteData(statusUpdateGetFunction);
         props.mediaTable.grantReadWriteData(statusUpdatePutFunction);
 
-        props.leaderboardTable.grantReadWriteData(backfillPutFunction);
+        props.leaderboardTable.grantReadWriteData(backfillPostFunction);
         props.leaderboardTable.grantReadWriteData(statusUpdatePutFunction);
 
-        const backfillPutTask = new LambdaInvoke(this, 'backfillPutInvoke', {
-            lambdaFunction: backfillPutFunction,
+        const backfillPostTask = new LambdaInvoke(this, 'backfillPostInvoke', {
+            lambdaFunction: backfillPostFunction,
             outputPath: '$.Payload'
         });
-        backfillPutTask.addRetry();
-        const backfillPutStateMachine = new StateMachine(this, 'backfillPutStateMachine', {
-            definition: backfillPutTask
+        backfillPostTask.addRetry();
+        const backfillPostStateMachine = new StateMachine(this, 'backfillPostStateMachine', {
+            definition: backfillPostTask
         });
 
         const mediaInfoGetIntegration = new HttpLambdaIntegration('mediaInfoGetIntegration', mediaInfoGetFunction);
@@ -64,8 +64,8 @@ export class MediaStack extends Stack {
         const statusUpdateGetIntegration = new HttpLambdaIntegration('statusUpdateGetIntegration', statusUpdateGetFunction);
         const statusUpdatePutIntegration = new HttpLambdaIntegration('statusUpdatePutIntegration', statusUpdatePutFunction);
 
-        const backfillPutIntegration = new HttpStepFunctionsIntegration('backfillPutIntegration', {
-            stateMachine: backfillPutStateMachine
+        const backfillPostIntegration = new HttpStepFunctionsIntegration('backfillPostIntegration', {
+            stateMachine: backfillPostStateMachine
         })
 
         const mediaInfoGetRouteOptions: AddRoutesOptions = {
@@ -83,10 +83,10 @@ export class MediaStack extends Stack {
             methods: [HttpMethod.GET],
             integration: backfillGetIntegration
         };
-        const backfillPutRouteOptions: AddRoutesOptions = {
+        const backfillPostRouteOptions: AddRoutesOptions = {
             path: '/backfill/put',
-            methods: [HttpMethod.PUT],
-            integration: backfillPutIntegration
+            methods: [HttpMethod.POST],
+            integration: backfillPostIntegration
         };
         const statusUpdateGetRouteOptions: AddRoutesOptions = {
             path: '/statusUpdate/get',
@@ -103,7 +103,7 @@ export class MediaStack extends Stack {
             mediaInfoGetRouteOptions,
             mediaInfoPutRouteOptions,
             backfillGetRouteOptions,
-            backfillPutRouteOptions,
+            backfillPostRouteOptions,
             statusUpdateGetRouteOptions,
             statusUpdatePutRouteOptions
         ];
