@@ -1,5 +1,5 @@
 import { HttpIntegrationType, HttpRouteIntegration, HttpRouteIntegrationBindOptions, HttpRouteIntegrationConfig, PayloadFormatVersion } from "@aws-cdk/aws-apigatewayv2-alpha";
-import { Resource } from "aws-cdk-lib";
+import { CfnOutput, Resource } from "aws-cdk-lib";
 import { CfnIntegration } from "aws-cdk-lib/aws-apigatewayv2";
 import { Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { StateMachine } from "aws-cdk-lib/aws-stepfunctions";
@@ -20,11 +20,26 @@ export class HttpStepFunctionsIntegration extends HttpRouteIntegration {
     }
     
     public bind(options: HttpRouteIntegrationBindOptions): HttpRouteIntegrationConfig {
+        new CfnOutput(options.scope, 'httpApiID', {
+            value: options.route.httpApi.apiId,
+            description: 'HttpApi ID',
+        });
+
+        new CfnOutput(options.scope, 'stateMachineARN', {
+            value: this.props.stateMachine.stateMachineArn,
+            description: 'State Machine ARN',
+        });
+        
         // Create the IAM role for API Gateway
         const apiRole = new Role(options.scope, 'httpApiRole', {
             assumedBy: new ServicePrincipal('apigateway.amazonaws.com'),
         });
         this.props.stateMachine.grantStartExecution(apiRole);
+        
+        new CfnOutput(options.scope, 'httpApiRoleARN', {
+            value: apiRole.roleArn,
+            description: 'API Role ARN',
+        });
         
         // Create the AWS_PROXY integration with Step Functions
         const httpStepFunctionIntegration = new CfnIntegration(options.scope, 'httpStepFunctionIntegration', {
@@ -38,6 +53,11 @@ export class HttpStepFunctionsIntegration extends HttpRouteIntegration {
                 Input: '$request.body.input',
             },
             timeoutInMillis: this.props.timeoutInMillis,
+        });
+
+        new CfnOutput(options.scope, 'httpStepFunctionIntegrationRef', {
+            value: httpStepFunctionIntegration.ref,
+            description: 'HTTP Step Function Integration Ref',
         });
         
         const roleResource = apiRole.node.defaultChild as Construct;
