@@ -62,6 +62,7 @@ export class HttpStepFunctionsIntegration extends HttpRouteIntegration {
         return {
             type: HttpIntegrationType.AWS_PROXY,
             uri: `arn:aws:apigateway:${Aws.REGION}:states:action/StartExecution`,
+            credentials: {credentialsArn: httpApiRole.roleArn},
             payloadFormatVersion: PayloadFormatVersion.VERSION_1_0
         };
     }
