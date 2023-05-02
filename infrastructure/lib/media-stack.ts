@@ -30,7 +30,7 @@ export class MediaStack extends Stack {
             entry: FUNCTIONS_FOLDER + 'backfill/get'
         });
         const backfillPostFunction = new GoFunction(this, 'backfillPostFunction', {
-            entry: FUNCTIONS_FOLDER + 'backfill/put'
+            entry: FUNCTIONS_FOLDER + 'backfill/post'
         });
         const statusUpdateGetFunction = new GoFunction(this, 'statusUpdateGetFunction', {
             entry: FUNCTIONS_FOLDER + 'status_update/get'
@@ -84,7 +84,7 @@ export class MediaStack extends Stack {
             integration: backfillGetIntegration
         };
         const backfillPostRouteOptions: AddRoutesOptions = {
-            path: '/backfill/put',
+            path: '/backfill/post',
             methods: [HttpMethod.POST],
             integration: backfillPostIntegration
         };
