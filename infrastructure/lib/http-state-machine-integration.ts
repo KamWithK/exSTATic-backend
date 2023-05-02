@@ -20,16 +20,6 @@ export class HttpStepFunctionsIntegration extends HttpRouteIntegration {
     }
     
     public bind(options: HttpRouteIntegrationBindOptions): HttpRouteIntegrationConfig {
-        new CfnOutput(options.scope, 'httpApiID', {
-            value: options.route.httpApi.apiId,
-            description: 'HttpApi ID',
-        });
-
-        new CfnOutput(options.scope, 'stateMachineARN', {
-            value: this.props.stateMachine.stateMachineArn,
-            description: 'State Machine ARN',
-        });
-        
         // Create the IAM role for API Gateway
         const httpApiRole = new Role(options.scope, 'httpApiRole', {
             assumedBy: new ServicePrincipal('apigateway.amazonaws.com'),
@@ -62,11 +52,6 @@ export class HttpStepFunctionsIntegration extends HttpRouteIntegration {
                 Input: '$request.body.input',
             },
             timeoutInMillis: this.props.timeoutInMillis,
-        });
-
-        new CfnOutput(options.scope, 'httpStepFunctionIntegrationRef', {
-            value: httpStepFunctionIntegration.ref,
-            description: 'HTTP Step Function Integration Ref',
         });
         
         const roleResource = httpApiRole.node.defaultChild as Construct;
