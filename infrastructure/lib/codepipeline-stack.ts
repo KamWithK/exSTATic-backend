@@ -30,7 +30,7 @@ export class CodePipelineStack extends Stack {
             codeBuildDefaults: {
                 cache: Cache.bucket(cacheBucket),
                 buildEnvironment: {
-                    buildImage: LinuxBuildImage.STANDARD_6_0,
+                    buildImage: LinuxBuildImage.STANDARD_7_0,
                     computeType: ComputeType.LARGE
                 }
             }
