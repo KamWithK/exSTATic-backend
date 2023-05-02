@@ -4,7 +4,7 @@ import { CodePipeline, CodePipelineSource, ManualApprovalStep, ShellStep } from 
 
 import { PIPELINE_CONFIG, DEV_ENV_ENVIRONMENT, TEST_ENV_ENVIRONMENT, PROD_ENV_ENVIRONMENT, INFRASTRUCTURE_FOLDER } from '../config';
 import { CodePipelineStage } from './codepipeline-stage';
-import { Cache } from 'aws-cdk-lib/aws-codebuild';
+import { Cache, ComputeType, LinuxArmBuildImage } from 'aws-cdk-lib/aws-codebuild';
 import { BlockPublicAccess, Bucket } from 'aws-cdk-lib/aws-s3';
 
 export class CodePipelineStack extends Stack {
@@ -28,7 +28,11 @@ export class CodePipelineStack extends Stack {
             synth: synth,
             crossAccountKeys: true,
             codeBuildDefaults: {
-                cache: Cache.bucket(cacheBucket)
+                cache: Cache.bucket(cacheBucket),
+                buildEnvironment: {
+                    computeType: ComputeType.LARGE,
+                    buildImage: LinuxArmBuildImage.AMAZON_LINUX_2_STANDARD_2_0
+                }
             }
         });
 
