@@ -1,5 +1,5 @@
 import { HttpIntegrationType, HttpRouteIntegration, HttpRouteIntegrationBindOptions, HttpRouteIntegrationConfig, PayloadFormatVersion } from "@aws-cdk/aws-apigatewayv2-alpha";
-import { CfnOutput, Resource, Stack } from "aws-cdk-lib";
+import { Aws, CfnOutput, Resource } from "aws-cdk-lib";
 import { CfnIntegration } from "aws-cdk-lib/aws-apigatewayv2";
 import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { StateMachine } from "aws-cdk-lib/aws-stepfunctions";
@@ -61,7 +61,7 @@ export class HttpStepFunctionsIntegration extends HttpRouteIntegration {
 
         return {
             type: HttpIntegrationType.AWS_PROXY,
-            uri: `arn:${Stack.of(options.scope).partition}:apigateway:${Stack.of(options.scope).region}:states:action/StartExecution`,
+            uri: `arn:aws:apigateway:${Aws.REGION}:states:action/StartExecution`,
             payloadFormatVersion: PayloadFormatVersion.VERSION_1_0
         };
     }
