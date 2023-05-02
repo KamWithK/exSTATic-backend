@@ -1,7 +1,9 @@
 import { HttpIntegrationType, HttpRouteIntegration, HttpRouteIntegrationBindOptions, HttpRouteIntegrationConfig, PayloadFormatVersion } from "@aws-cdk/aws-apigatewayv2-alpha";
+import { Resource } from "aws-cdk-lib";
 import { CfnIntegration } from "aws-cdk-lib/aws-apigatewayv2";
 import { Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { StateMachine } from "aws-cdk-lib/aws-stepfunctions";
+import { Construct } from "constructs";
 
 interface HttpStepFunctionsIntegrationProps {
     stateMachine: StateMachine;
@@ -37,6 +39,11 @@ export class HttpStepFunctionsIntegration extends HttpRouteIntegration {
             },
             timeoutInMillis: this.props.timeoutInMillis,
         });
+        
+        const roleResource = apiRole.node.defaultChild as Construct;
+        if (roleResource instanceof Resource) {
+            httpStepFunctionIntegration.node.addDependency(roleResource);
+        }
         
         return {
             type: HttpIntegrationType.AWS_PROXY,

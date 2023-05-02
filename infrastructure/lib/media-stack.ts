@@ -66,7 +66,7 @@ export class MediaStack extends Stack {
 
         const backfillPostIntegration = new HttpStepFunctionsIntegration('backfillPostIntegration', {
             stateMachine: backfillPostStateMachine
-        })
+        });
 
         const mediaInfoGetRouteOptions: AddRoutesOptions = {
             path: '/mediaInfo/get',
