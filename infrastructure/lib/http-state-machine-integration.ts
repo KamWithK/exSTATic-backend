@@ -1,5 +1,5 @@
 import { HttpIntegrationType, HttpRouteIntegration, HttpRouteIntegrationBindOptions, HttpRouteIntegrationConfig, PayloadFormatVersion } from "@aws-cdk/aws-apigatewayv2-alpha";
-import { CfnOutput, Resource } from "aws-cdk-lib";
+import { CfnOutput, Resource, Stack } from "aws-cdk-lib";
 import { CfnIntegration } from "aws-cdk-lib/aws-apigatewayv2";
 import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { StateMachine } from "aws-cdk-lib/aws-stepfunctions";
