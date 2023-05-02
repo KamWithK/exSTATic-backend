@@ -1,13 +1,21 @@
 import { Construct } from 'constructs';
-import { Stack, StackProps } from 'aws-cdk-lib';
+import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { CodePipeline, CodePipelineSource, ManualApprovalStep, ShellStep } from 'aws-cdk-lib/pipelines';
 
 import { PIPELINE_CONFIG, DEV_ENV_ENVIRONMENT, TEST_ENV_ENVIRONMENT, PROD_ENV_ENVIRONMENT, INFRASTRUCTURE_FOLDER } from '../config';
 import { CodePipelineStage } from './codepipeline-stage';
+import { Cache } from 'aws-cdk-lib/aws-codebuild';
+import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
 
 export class CodePipelineStack extends Stack {
     constructor(scope: Construct, id: string, props: StackProps) {
         super(scope, id, props);
+
+        const cacheBucket = new Bucket(scope, 'cacheBucket', {
+            blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+            versioned: false,
+            removalPolicy: RemovalPolicy.DESTROY
+        });
 
         const synth = new ShellStep('synth', {
             input: CodePipelineSource.connection(PIPELINE_CONFIG.repo_string, PIPELINE_CONFIG.branch, PIPELINE_CONFIG.connection),
@@ -18,7 +26,10 @@ export class CodePipelineStack extends Stack {
         const pipeline = new CodePipeline(this, 'pipeline', {
             pipelineName: 'pipeline',
             synth: synth,
-            crossAccountKeys: true
+            crossAccountKeys: true,
+            codeBuildDefaults: {
+                cache: Cache.bucket(cacheBucket)
+            }
         });
 
         const devStage = new CodePipelineStage(this, 'devStage', {
