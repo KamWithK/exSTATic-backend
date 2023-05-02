@@ -5,7 +5,7 @@ import { CodePipeline, CodePipelineSource, ManualApprovalStep, ShellStep } from 
 import { PIPELINE_CONFIG, DEV_ENV_ENVIRONMENT, TEST_ENV_ENVIRONMENT, PROD_ENV_ENVIRONMENT, INFRASTRUCTURE_FOLDER } from '../config';
 import { CodePipelineStage } from './codepipeline-stage';
 import { Cache } from 'aws-cdk-lib/aws-codebuild';
-import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
+import { BlockPublicAccess, Bucket } from 'aws-cdk-lib/aws-s3';
 
 export class CodePipelineStack extends Stack {
     constructor(scope: Construct, id: string, props: StackProps) {
