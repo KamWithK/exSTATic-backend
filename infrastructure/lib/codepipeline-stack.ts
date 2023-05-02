@@ -30,8 +30,7 @@ export class CodePipelineStack extends Stack {
             codeBuildDefaults: {
                 cache: Cache.bucket(cacheBucket),
                 buildEnvironment: {
-                    computeType: ComputeType.LARGE,
-                    buildImage: LinuxArmBuildImage.AMAZON_LINUX_2_STANDARD_2_0
+                    computeType: ComputeType.LARGE
                 }
             }
         });
