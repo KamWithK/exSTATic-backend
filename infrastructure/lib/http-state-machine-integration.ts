@@ -61,7 +61,7 @@ export class HttpStepFunctionsIntegration extends HttpRouteIntegration {
 
         return {
             type: HttpIntegrationType.AWS_PROXY,
-            uri: `arn:${Stack.of(options.scope).partition}:apigateway:${Stack.of(options.scope).region}:${Stack.of(options.scope).account}:state-machines/${this.props.stateMachine.stateMachineName}:action/StartExecution`,
+            uri: `arn:${Stack.of(options.scope).partition}:apigateway:${Stack.of(options.scope).region}:state-machines/${this.props.stateMachine.stateMachineName}:action/StartExecution`,
             payloadFormatVersion: PayloadFormatVersion.VERSION_1_0
         };
     }
