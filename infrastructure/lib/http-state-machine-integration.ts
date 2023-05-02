@@ -1,7 +1,7 @@
 import { HttpIntegrationType, HttpRouteIntegration, HttpRouteIntegrationBindOptions, HttpRouteIntegrationConfig, PayloadFormatVersion } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { CfnOutput, Resource } from "aws-cdk-lib";
 import { CfnIntegration } from "aws-cdk-lib/aws-apigatewayv2";
-import { Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
+import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { StateMachine } from "aws-cdk-lib/aws-stepfunctions";
 import { Construct } from "constructs";
 
@@ -31,13 +31,22 @@ export class HttpStepFunctionsIntegration extends HttpRouteIntegration {
         });
         
         // Create the IAM role for API Gateway
-        const apiRole = new Role(options.scope, 'httpApiRole', {
+        const httpApiRole = new Role(options.scope, 'httpApiRole', {
             assumedBy: new ServicePrincipal('apigateway.amazonaws.com'),
+            inlinePolicies: {
+                AllowSFNExec: new PolicyDocument({
+                    statements: [new PolicyStatement({
+                        actions: ['states:StartExecution', 'states:StartSyncExecution'],
+                        effect: Effect.ALLOW,
+                        resources: [this.props.stateMachine.stateMachineArn]
+                    })]
+                })
+            }
         });
-        this.props.stateMachine.grantStartExecution(apiRole);
+        this.props.stateMachine.grantStartExecution(httpApiRole);
         
         new CfnOutput(options.scope, 'httpApiRoleARN', {
-            value: apiRole.roleArn,
+            value: httpApiRole.roleArn,
             description: 'API Role ARN',
         });
         
@@ -47,7 +56,7 @@ export class HttpStepFunctionsIntegration extends HttpRouteIntegration {
             integrationType: HttpIntegrationType.AWS_PROXY,
             integrationSubtype: 'StepFunctions-StartExecution',
             payloadFormatVersion: PayloadFormatVersion.VERSION_1_0.version,
-            credentialsArn: apiRole.roleArn,
+            credentialsArn: httpApiRole.roleArn,
             requestParameters: {
                 StateMachineArn: this.props.stateMachine.stateMachineArn,
                 Input: '$request.body.input',
@@ -60,7 +69,7 @@ export class HttpStepFunctionsIntegration extends HttpRouteIntegration {
             description: 'HTTP Step Function Integration Ref',
         });
         
-        const roleResource = apiRole.node.defaultChild as Construct;
+        const roleResource = httpApiRole.node.defaultChild as Construct;
         if (roleResource instanceof Resource) {
             httpStepFunctionIntegration.node.addDependency(roleResource);
         }
