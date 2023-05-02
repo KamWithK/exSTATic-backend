@@ -18,7 +18,7 @@ export class HttpStepFunctionsIntegration extends HttpRouteIntegration {
         
         this.props = props;
     }
-    
+
     public bind(options: HttpRouteIntegrationBindOptions): HttpRouteIntegrationConfig {
         // Create the IAM role for API Gateway
         const httpApiRole = new Role(options.scope, 'httpApiRole', {
@@ -39,7 +39,7 @@ export class HttpStepFunctionsIntegration extends HttpRouteIntegration {
             value: httpApiRole.roleArn,
             description: 'API Role ARN',
         });
-        
+
         // Create the AWS_PROXY integration with Step Functions
         const httpStepFunctionIntegration = new CfnIntegration(options.scope, 'httpStepFunctionIntegration', {
             apiId: options.route.httpApi.httpApiId,
@@ -58,10 +58,10 @@ export class HttpStepFunctionsIntegration extends HttpRouteIntegration {
         if (roleResource instanceof Resource) {
             httpStepFunctionIntegration.node.addDependency(roleResource);
         }
-        
+
         return {
             type: HttpIntegrationType.AWS_PROXY,
-            uri: `arn:${Stack.of(options.scope).partition}:apigateway:${Stack.of(options.scope).region}:${Stack.of(options.scope).account}:state-machines/${this.props.stateMachine.stateMachineName}`,
+            uri: `arn:${Stack.of(options.scope).partition}:apigateway:${Stack.of(options.scope).region}:${Stack.of(options.scope).account}:state-machines/${this.props.stateMachine.stateMachineName}:action/StartExecution`,
             payloadFormatVersion: PayloadFormatVersion.VERSION_1_0
         };
     }
