@@ -3,8 +3,11 @@ import { Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { Table } from 'aws-cdk-lib/aws-dynamodb';
 import { HttpLambdaIntegration } from '@aws-cdk/aws-apigatewayv2-integrations-alpha';
-import { AddRoutesOptions, HttpMethod } from '@aws-cdk/aws-apigatewayv2-alpha';
+import { AddRoutesOptions, HttpApi, HttpMethod } from '@aws-cdk/aws-apigatewayv2-alpha';
+import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
+import { StateMachine } from 'aws-cdk-lib/aws-stepfunctions';
 import { FUNCTIONS_FOLDER } from '../config';
+import { HttpStepFunctionsIntegration } from './http-state-machine-integration';
 
 export interface MediaStackProps extends StackProps {
     mediaTable: Table,
@@ -46,12 +49,24 @@ export class MediaStack extends Stack {
         props.leaderboardTable.grantReadWriteData(backfillPutFunction);
         props.leaderboardTable.grantReadWriteData(statusUpdatePutFunction);
 
+        const backfillPutTask = new LambdaInvoke(this, 'backfillPutInvoke', {
+            lambdaFunction: backfillPutFunction,
+            outputPath: '$.Payload'
+        });
+        backfillPutTask.addRetry();
+        const backfillPutStateMachine = new StateMachine(this, 'backfillPutStateMachine', {
+            definition: backfillPutTask
+        });
+
         const mediaInfoGetIntegration = new HttpLambdaIntegration('mediaInfoGetIntegration', mediaInfoGetFunction);
         const mediaInfoPutIntegration = new HttpLambdaIntegration('mediaInfoPutIntegration', mediaInfoPutFunction);
         const backfillGetIntegration = new HttpLambdaIntegration('backfillGetIntegration', backfillGetFunction);
-        const backfillPutIntegration = new HttpLambdaIntegration('backfillPutIntegration', backfillPutFunction);
         const statusUpdateGetIntegration = new HttpLambdaIntegration('statusUpdateGetIntegration', statusUpdateGetFunction);
         const statusUpdatePutIntegration = new HttpLambdaIntegration('statusUpdatePutIntegration', statusUpdatePutFunction);
+
+        const backfillPutIntegration = new HttpStepFunctionsIntegration('backfillPutIntegration', {
+            stateMachine: backfillPutStateMachine
+        })
 
         const mediaInfoGetRouteOptions: AddRoutesOptions = {
             path: '/mediaInfo/get',
