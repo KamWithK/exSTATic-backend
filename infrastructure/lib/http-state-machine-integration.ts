@@ -1,6 +1,4 @@
-import { HttpIntegrationSubtype, HttpIntegrationType, HttpRouteIntegration, HttpRouteIntegrationBindOptions, HttpRouteIntegrationConfig, PayloadFormatVersion } from "@aws-cdk/aws-apigatewayv2-alpha";
-import { Aws, CfnOutput } from "aws-cdk-lib";
-import { CfnIntegration } from "aws-cdk-lib/aws-apigatewayv2";
+import { HttpIntegrationSubtype, HttpIntegrationType, HttpRouteIntegration, HttpRouteIntegrationBindOptions, HttpRouteIntegrationConfig, ParameterMapping, PayloadFormatVersion } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { StateMachine } from "aws-cdk-lib/aws-stepfunctions";
 
@@ -34,31 +32,14 @@ export class HttpStepFunctionsIntegration extends HttpRouteIntegration {
         });
         this.props.stateMachine.grantStartExecution(httpApiRole);
         
-        new CfnOutput(options.scope, 'httpApiRoleARN', {
-            value: httpApiRole.roleArn,
-            description: 'API Role ARN',
-        });
-
-        // Create the AWS_PROXY integration with Step Functions
-        const httpStepFunctionIntegration = new CfnIntegration(options.scope, 'httpStepFunctionIntegration', {
-            apiId: options.route.httpApi.apiId,
-            integrationType: HttpIntegrationType.AWS_PROXY,
-            integrationSubtype: HttpIntegrationSubtype.STEPFUNCTIONS_START_EXECUTION,
-            payloadFormatVersion: PayloadFormatVersion.VERSION_1_0.version,
-            credentialsArn: httpApiRole.roleArn,
-            requestParameters: {
-                StateMachineArn: this.props.stateMachine.stateMachineArn,
-                Input: '$request.body.input',
-            },
-            timeoutInMillis: this.props.timeoutInMillis,
-        });
-
         return {
             type: HttpIntegrationType.AWS_PROXY,
-            uri: `arn:aws:apigateway:${Aws.REGION}:states:action/StartExecution`,
             subtype: HttpIntegrationSubtype.STEPFUNCTIONS_START_EXECUTION,
             credentials: {credentialsArn: httpApiRole.roleArn},
-            payloadFormatVersion: PayloadFormatVersion.VERSION_1_0
+            payloadFormatVersion: PayloadFormatVersion.VERSION_1_0,
+            parameterMapping: new ParameterMapping()
+                .custom('StateMachineArn', this.props.stateMachine.stateMachineArn)
+                .custom('Input', '$request.body.input')
         };
     }
 }
