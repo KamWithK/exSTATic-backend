@@ -59,6 +59,6 @@ export class ApiStack extends Stack {
         });
 
         props.routeOptions.forEach((addRouteOption) => httpApi.addRoutes(addRouteOption));
-        props.stateMachines.forEach((stateMachine) => createStateMachineRoute(this, httpApi, stateMachine, Duration.minutes(1).toMilliseconds()))
+        props.stateMachines.forEach((stateMachine) => createStateMachineRoute(this, httpApi, stateMachine, Duration.seconds(30).toMilliseconds()))
     }
 }
