@@ -42,7 +42,7 @@ export class HttpStepFunctionsIntegration extends HttpRouteIntegration {
         // Create the AWS_PROXY integration with Step Functions
         const httpStepFunctionIntegration = new CfnIntegration(options.scope, 'httpStepFunctionIntegration', {
             apiId: options.route.httpApi.apiId,
-            integrationType: "LAMBDA_PROXY",
+            integrationType: HttpIntegrationType.AWS_PROXY,
             integrationSubtype: 'StepFunctions-StartExecution',
             payloadFormatVersion: PayloadFormatVersion.VERSION_1_0.version,
             credentialsArn: httpApiRole.roleArn,
