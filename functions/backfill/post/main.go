@@ -16,7 +16,6 @@ var svc *dynamodb.DynamoDB
 
 type BackfillArgs struct {
 	Username     string                        `json:"username"`
-	GetAfter     int64                         `json:"get_after"`
 	MediaEntries []dynamo_types.UserMediaEntry `json:"media_entries"`
 	MediaStats   []dynamo_types.UserMediaStat  `json:"media_stats"`
 }
