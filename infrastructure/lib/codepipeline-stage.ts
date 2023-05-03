@@ -41,7 +41,7 @@ export class CodePipelineStage extends Stage {
                 ...mediaStack.routeOptions,
                 ...leaderboardStack.routeOptions
             ],
-            stateMachines: mediaStack.stateMachines
+            // stateMachines: mediaStack.stateMachines
         });
     }
 }

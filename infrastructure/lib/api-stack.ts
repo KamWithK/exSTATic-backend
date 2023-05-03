@@ -10,7 +10,7 @@ import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 
 export interface ApiStackProps extends StackProps {
     userPoolAuthoriser: HttpUserPoolAuthorizer,
     routeOptions: AddRoutesOptions[],
-    stateMachines: StateMachine[]
+    // stateMachines: StateMachine[]
 }
 
 function createStateMachineRoute(scope: Construct, httpApi: HttpApi, stateMachine: StateMachine, timeoutInMillis?: number) {
@@ -59,6 +59,6 @@ export class ApiStack extends Stack {
         });
 
         props.routeOptions.forEach((addRouteOption) => httpApi.addRoutes(addRouteOption));
-        props.stateMachines.forEach((stateMachine) => createStateMachineRoute(this, httpApi, stateMachine, Duration.seconds(30).toMilliseconds()))
+        // props.stateMachines.forEach((stateMachine) => createStateMachineRoute(this, httpApi, stateMachine, Duration.seconds(30).toMilliseconds()))
     }
 }
