@@ -1,6 +1,5 @@
-import { HttpIntegrationType, HttpRouteIntegration, HttpRouteIntegrationBindOptions, HttpRouteIntegrationConfig, PayloadFormatVersion } from "@aws-cdk/aws-apigatewayv2-alpha";
+import { HttpIntegrationSubtype, HttpIntegrationType, HttpRouteIntegration, HttpRouteIntegrationBindOptions, HttpRouteIntegrationConfig, PayloadFormatVersion } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { Aws, CfnOutput } from "aws-cdk-lib";
-import { IntegrationType } from "aws-cdk-lib/aws-apigateway";
 import { CfnIntegration } from "aws-cdk-lib/aws-apigatewayv2";
 import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { StateMachine } from "aws-cdk-lib/aws-stepfunctions";
@@ -43,8 +42,8 @@ export class HttpStepFunctionsIntegration extends HttpRouteIntegration {
         // Create the AWS_PROXY integration with Step Functions
         const httpStepFunctionIntegration = new CfnIntegration(options.scope, 'httpStepFunctionIntegration', {
             apiId: options.route.httpApi.apiId,
-            integrationType: IntegrationType.AWS,
-            // integrationSubtype: 'StepFunctions-StartExecution',
+            integrationType: HttpIntegrationType.AWS_PROXY,
+            integrationSubtype: HttpIntegrationSubtype.STEPFUNCTIONS_START_EXECUTION,
             payloadFormatVersion: PayloadFormatVersion.VERSION_1_0.version,
             credentialsArn: httpApiRole.roleArn,
             requestParameters: {
@@ -57,6 +56,7 @@ export class HttpStepFunctionsIntegration extends HttpRouteIntegration {
         return {
             type: HttpIntegrationType.AWS_PROXY,
             uri: `arn:aws:apigateway:${Aws.REGION}:states:action/StartExecution`,
+            subtype: HttpIntegrationSubtype.STEPFUNCTIONS_START_EXECUTION,
             credentials: {credentialsArn: httpApiRole.roleArn},
             payloadFormatVersion: PayloadFormatVersion.VERSION_1_0
         };
