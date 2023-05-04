@@ -12,10 +12,11 @@ export class CodePipelineStack extends Stack {
         super(scope, id, props);
 
         const cacheBucket = new Bucket(this, 'cacheBucket', {
+            bucketName: 'cacheBucket',
             blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
             versioned: false,
             removalPolicy: RemovalPolicy.DESTROY,
-            encryption: BucketEncryption.S3_MANAGED
+            encryption: BucketEncryption.KMS_MANAGED
         });
 
         const synth = new ShellStep('synth', {
