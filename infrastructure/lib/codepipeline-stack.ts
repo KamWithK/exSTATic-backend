@@ -34,7 +34,8 @@ export class CodePipelineStack extends Stack {
                     computeType: ComputeType.LARGE
                 },
             },
-            artifactBucket: cacheBucket
+            artifactBucket: cacheBucket,
+            useChangeSets: false
         });
 
         const devStage = new CodePipelineStage(this, 'devStage', {
