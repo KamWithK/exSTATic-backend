@@ -2,14 +2,18 @@ package dynamo_types
 
 import (
 	"fmt"
+	"log"
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
+
+const AWSMaxBatchSize = 25
 
 type CompositeKey struct {
 	PK interface{} `json:"pk" binding:"required"`
@@ -185,34 +189,58 @@ func PutItemRequest(svc *dynamodb.DynamoDB, tableKey map[string]*dynamodb.Attrib
 	}, nil
 }
 
-func BatchWriteItems(svc *dynamodb.DynamoDB, tableName string, items []*dynamodb.WriteRequest, maxBatchSize int) ([]*dynamodb.WriteRequest, []error) {
-	errors := []error{}
+func BatchWrite(svc *dynamodb.DynamoDB, tableName string, items []*dynamodb.WriteRequest) []*dynamodb.WriteRequest {
 	unprocessedWrites := []*dynamodb.WriteRequest{}
 
-	if maxBatchSize < 1 || maxBatchSize > 25 {
-		errors = append(errors, fmt.Errorf("Invalid maxBatchSize: %d. Valid sizes are between 1 and 25", maxBatchSize))
-		return nil, errors
+	if len(items) > AWSMaxBatchSize {
+		unprocessedWrites = append(unprocessedWrites, items[AWSMaxBatchSize:]...)
 	}
 
-	totalItems := len(items)
-	for i := 0; i < totalItems; i += maxBatchSize {
-		end := i + maxBatchSize
-		if end > totalItems {
-			end = totalItems
-		}
+	output, err := svc.BatchWriteItem(&dynamodb.BatchWriteItemInput{
+		RequestItems: map[string][]*dynamodb.WriteRequest{
+			tableName: items[:AWSMaxBatchSize],
+		},
+	})
+	unprocessedWrites = append(unprocessedWrites, output.UnprocessedItems[tableName]...)
 
-		output, err := svc.BatchWriteItem(&dynamodb.BatchWriteItemInput{
-			RequestItems: map[string][]*dynamodb.WriteRequest{
-				tableName: items[i:end],
-			},
-		})
-		if err != nil {
-			errors = append(errors, fmt.Errorf("Error in BatchWriteItem (batch %d-%d): %s", i, end-1, err.Error()))
-		}
-
-		remainingWrites := output.UnprocessedItems[tableName]
-		unprocessedWrites = append(unprocessedWrites, remainingWrites...)
+	if err != nil {
+		log.Printf("Error in BatchWriteItem: %s", err.Error())
 	}
 
-	return unprocessedWrites, errors
+	return unprocessedWrites
+}
+
+func DistributedBatchWrites(svc *dynamodb.DynamoDB, tableName string, items []*dynamodb.WriteRequest, maxBatchSize int) []*dynamodb.WriteRequest {
+	if maxBatchSize < 1 || maxBatchSize > AWSMaxBatchSize {
+		maxBatchSize = AWSMaxBatchSize
+	}
+
+	var waitGroup sync.WaitGroup
+	channel := make(chan []*dynamodb.WriteRequest)
+
+	// Process each batch in separate threads
+	for start := 0; start < len(items); start += maxBatchSize {
+		waitGroup.Add(1)
+
+		go func(start int) {
+			defer waitGroup.Done()
+
+			channel <- BatchWrite(svc, tableName, items[start:start+maxBatchSize])
+		}(start)
+	}
+
+	// Waiting thread to close the channel
+	// Once all batches have been tried
+	go func() {
+		waitGroup.Wait()
+		close(channel)
+	}()
+
+	// Read from the channel concatenating unprocessed writes
+	unprocessedWrites := []*dynamodb.WriteRequest{}
+	for unprocessedWriteBatch := range channel {
+		unprocessedWrites = append(unprocessedWrites, unprocessedWriteBatch...)
+	}
+
+	return unprocessedWrites
 }

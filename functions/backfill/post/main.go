@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 
 	dynamo_types "github.com/KamWithK/exSTATic-backend"
+	batchwrite "github.com/KamWithK/exSTATic-backend/batchwrite"
 )
 
 var sess *session.Session
@@ -35,39 +37,46 @@ func putRequest(pk string, sk string, userMedia interface{}) (*dynamodb.WriteReq
 
 	writeRequest, putErr := dynamo_types.PutItemRequest(svc, tableKey, userMedia)
 	if putErr != nil {
-		return nil, fmt.Errorf("Error putting DynamoDB item: %s", putErr.Error())
+		return nil, fmt.Errorf("Error creating put item request: %s", putErr.Error())
 	}
 
 	return writeRequest, nil
 }
 
-func HandleRequest(ctx context.Context, history BackfillArgs) ([]*dynamodb.WriteRequest, []error) {
+func HandleRequest(ctx context.Context, history BackfillArgs) (*batchwrite.BatchwriteArgs, error) {
 	username := history.Username
 
 	writeRequests := []*dynamodb.WriteRequest{}
-	errors := []error{}
 
 	for _, userMedia := range history.MediaEntries {
 		writeRequest, putErr := putRequest(userMedia.Key.MediaType+"#"+username, userMedia.Key.MediaIdentifier, &userMedia)
 		if putErr != nil {
-			errors = append(errors, putErr)
+			log.Printf("Error invalid data: %s", putErr)
 			continue
 		}
+
 		writeRequests = append(writeRequests, writeRequest)
 	}
 
 	for _, userMedia := range history.MediaStats {
 		writeRequest, putErr := putRequest(userMedia.Key.MediaType+"#"+username, dynamo_types.ZeroPadInt64(*userMedia.Date)+"#"+userMedia.Key.MediaIdentifier, &userMedia)
 		if putErr != nil {
-			errors = append(errors, putErr)
+			log.Printf("Error invalid data: %s", putErr)
 			continue
 		}
+
 		writeRequests = append(writeRequests, writeRequest)
 	}
 
-	unprocessedWrites, batchErrs := dynamo_types.BatchWriteItems(svc, "media", writeRequests, 25)
+	if len(writeRequests) == 0 {
+		return nil, fmt.Errorf("Error no valid data")
+	}
 
-	return unprocessedWrites, append(errors, batchErrs...)
+	return &batchwrite.BatchwriteArgs{
+		WriteRequests: writeRequests,
+		TableName:     "media",
+		MaxBatchSize:  25,
+	}, nil
 }
 
 func main() {
