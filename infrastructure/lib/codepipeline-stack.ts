@@ -32,7 +32,7 @@ export class CodePipelineStack extends Stack {
                 buildEnvironment: {
                     buildImage: LinuxBuildImage.STANDARD_7_0,
                     computeType: ComputeType.LARGE
-                },
+                }
             },
             artifactBucket: cacheBucket,
             useChangeSets: false
