@@ -10,7 +10,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 
 	dynamo_types "github.com/KamWithK/exSTATic-backend"
-	batchwrite "github.com/KamWithK/exSTATic-backend/batchwrite"
 )
 
 var sess *session.Session
@@ -43,7 +42,7 @@ func putRequest(pk string, sk string, userMedia interface{}) (*dynamodb.WriteReq
 	return writeRequest, nil
 }
 
-func HandleRequest(ctx context.Context, history BackfillArgs) (*batchwrite.BatchwriteArgs, error) {
+func HandleRequest(ctx context.Context, history BackfillArgs) (*dynamo_types.BatchwriteArgs, error) {
 	username := history.Username
 
 	writeRequests := []*dynamodb.WriteRequest{}
@@ -72,7 +71,7 @@ func HandleRequest(ctx context.Context, history BackfillArgs) (*batchwrite.Batch
 		return nil, fmt.Errorf("Error no valid data")
 	}
 
-	return &batchwrite.BatchwriteArgs{
+	return &dynamo_types.BatchwriteArgs{
 		WriteRequests: writeRequests,
 		TableName:     "media",
 		MaxBatchSize:  25,

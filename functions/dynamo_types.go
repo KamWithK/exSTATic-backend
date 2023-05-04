@@ -75,6 +75,12 @@ type LeaderboardEntry struct {
 	CharsRead  int64          `json:"chars_read"`
 }
 
+type BatchwriteArgs struct {
+	TableName     string                   `json:"table_name"`
+	WriteRequests []*dynamodb.WriteRequest `json:"write_requests"`
+	MaxBatchSize  int                      `json:"max_batch_size" default:"25"`
+}
+
 func ZeroPadInt64(number int64) string {
 	return fmt.Sprintf("%0*d", strconv.IntSize/4, number)
 }
@@ -210,22 +216,22 @@ func BatchWrite(svc *dynamodb.DynamoDB, tableName string, items []*dynamodb.Writ
 	return unprocessedWrites
 }
 
-func DistributedBatchWrites(svc *dynamodb.DynamoDB, tableName string, items []*dynamodb.WriteRequest, maxBatchSize int) []*dynamodb.WriteRequest {
-	if maxBatchSize < 1 || maxBatchSize > AWSMaxBatchSize {
-		maxBatchSize = AWSMaxBatchSize
+func DistributedBatchWrites(svc *dynamodb.DynamoDB, batchwriteArgs *BatchwriteArgs) *BatchwriteArgs {
+	if batchwriteArgs.MaxBatchSize < 1 || batchwriteArgs.MaxBatchSize > AWSMaxBatchSize {
+		batchwriteArgs.MaxBatchSize = AWSMaxBatchSize
 	}
 
 	var waitGroup sync.WaitGroup
 	channel := make(chan []*dynamodb.WriteRequest)
 
 	// Process each batch in separate threads
-	for start := 0; start < len(items); start += maxBatchSize {
+	for start := 0; start < len(batchwriteArgs.WriteRequests); start += batchwriteArgs.MaxBatchSize {
 		waitGroup.Add(1)
 
 		go func(start int) {
 			defer waitGroup.Done()
 
-			channel <- BatchWrite(svc, tableName, items[start:start+maxBatchSize])
+			channel <- BatchWrite(svc, batchwriteArgs.TableName, batchwriteArgs.WriteRequests[start:start+batchwriteArgs.MaxBatchSize])
 		}(start)
 	}
 
@@ -242,5 +248,9 @@ func DistributedBatchWrites(svc *dynamodb.DynamoDB, tableName string, items []*d
 		unprocessedWrites = append(unprocessedWrites, unprocessedWriteBatch...)
 	}
 
-	return unprocessedWrites
+	return &BatchwriteArgs{
+		TableName:     batchwriteArgs.TableName,
+		WriteRequests: unprocessedWrites,
+		MaxBatchSize:  batchwriteArgs.MaxBatchSize,
+	}
 }
