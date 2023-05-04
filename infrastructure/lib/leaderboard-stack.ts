@@ -26,7 +26,7 @@ export class LeaderboardStack extends Stack {
 
         const leaderboardRouteOptions: AddRoutesOptions = {
             path: '/leaderboard',
-            methods: [HttpMethod.ANY],
+            methods: [HttpMethod.GET],
             integration: leaderboardIntegration
         };
 
