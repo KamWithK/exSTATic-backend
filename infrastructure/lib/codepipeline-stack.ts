@@ -6,17 +6,23 @@ import { PIPELINE_CONFIG, DEV_ENV_ENVIRONMENT, TEST_ENV_ENVIRONMENT, PROD_ENV_EN
 import { CodePipelineStage } from './codepipeline-stage';
 import { Cache, ComputeType, LinuxBuildImage } from 'aws-cdk-lib/aws-codebuild';
 import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
+import { Key } from 'aws-cdk-lib/aws-kms';
 
 export class CodePipelineStack extends Stack {
     constructor(scope: Construct, id: string, props: StackProps) {
         super(scope, id, props);
+
+        const kmsKey = new Key(this, 'bucketKey', {
+            enableKeyRotation: true,
+        });
 
         const cacheBucket = new Bucket(this, 'cacheBucket', {
             bucketName: 'cache-bucket',
             blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
             versioned: false,
             removalPolicy: RemovalPolicy.DESTROY,
-            encryption: BucketEncryption.KMS_MANAGED
+            encryption: BucketEncryption.KMS,
+            encryptionKey: kmsKey
         });
 
         const synth = new ShellStep('synth', {
