@@ -59,8 +59,6 @@ export class MediaStack extends Stack {
             definition: backfillPostTask
         });
 
-        // this.stateMachines = [backfillPostStateMachine];
-
         const mediaInfoGetIntegration = new HttpLambdaIntegration('mediaInfoGetIntegration', mediaInfoGetFunction);
         const mediaInfoPutIntegration = new HttpLambdaIntegration('mediaInfoPutIntegration', mediaInfoPutFunction);
         const backfillGetIntegration = new HttpLambdaIntegration('backfillGetIntegration', backfillGetFunction);
