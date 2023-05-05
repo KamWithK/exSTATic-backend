@@ -12,7 +12,6 @@ export class CodePipelineStack extends Stack {
         super(scope, id, props);
 
         const cacheBucket = new Bucket(this, 'cacheBucket', {
-            bucketName: 'cache-bucket',
             blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
             versioned: false,
             removalPolicy: RemovalPolicy.DESTROY
