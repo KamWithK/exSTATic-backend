@@ -2,7 +2,8 @@ package main
 
 import (
 	"context"
-	"fmt"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -25,12 +26,13 @@ func init() {
 func HandleRequest(ctx context.Context, options dynamo_types.UserSettings) error {
 	tableKey, keyErr := dynamodbattribute.MarshalMap(options.Key)
 	if keyErr != nil {
-		return fmt.Errorf("Error marshalling key: %s", keyErr.Error())
+		log.Error().Err(keyErr).Str("table", "settings").Interface("key", options.Key).Msg("Could not marshal dynamodb key")
+		return keyErr
 	}
 
 	_, updateErr := dynamo_types.UpdateItem(svc, "settings", tableKey, options)
 	if updateErr != nil {
-		return fmt.Errorf("Error updating DynamoDB item: %s", updateErr.Error())
+		return updateErr
 	}
 
 	return nil

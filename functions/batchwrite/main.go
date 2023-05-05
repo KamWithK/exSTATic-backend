@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"errors"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -25,10 +27,14 @@ func HandleRequest(ctx context.Context, args *dynamo_types.BatchwriteArgs) (*dyn
 	nextArgs := dynamo_types.DistributedBatchWrites(svc, args)
 
 	if len(nextArgs.WriteRequests) == 0 {
+		log.Info().Msg("Successfully wrote full batch to DynamoDB")
 		return nil, nil
 	}
 
-	return nextArgs, fmt.Errorf("Unprocessed items error")
+	err := errors.New("Unprocessed items error")
+	log.Error().Err(err).Msg("")
+
+	return nextArgs, err
 }
 
 func main() {

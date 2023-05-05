@@ -2,11 +2,13 @@ package dynamo_types
 
 import (
 	"fmt"
-	"log"
 	"reflect"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -129,7 +131,8 @@ func GetCompositeKey(pk interface{}, sk interface{}) (map[string]*dynamodb.Attri
 
 	tableKey, keyErr := dynamodbattribute.MarshalMap(compositeKey)
 	if keyErr != nil {
-		return nil, fmt.Errorf("Error marshalling key: %s", keyErr.Error())
+		log.Error().Err(keyErr).Interface("pk", pk).Interface("sk", sk).Msg("Could not marshal dynamodb key")
+		return nil, keyErr
 	}
 
 	return tableKey, nil
@@ -153,36 +156,50 @@ func UpdateItem(svc *dynamodb.DynamoDB, tableName string, tableKey map[string]*d
 	updateExpression, expressionAttributeNames, expressionAttributeValues := CreateUpdateExpressionAttributes(tableData)
 
 	// Put item
-	return svc.UpdateItem(&dynamodb.UpdateItemInput{
+	updateItem, updateErr := svc.UpdateItem(&dynamodb.UpdateItemInput{
 		TableName:                 aws.String(tableName),
 		Key:                       tableKey,
 		UpdateExpression:          aws.String(updateExpression),
 		ExpressionAttributeNames:  expressionAttributeNames,
 		ExpressionAttributeValues: expressionAttributeValues,
 	})
+	if updateErr != nil {
+		log.Error().Err(updateErr).Str("table_name", tableName).Interface("table_key", tableKey).Interface("item", tableData).Msg("Dynamodb update item errored")
+		return nil, updateErr
+	}
+
+	return updateItem, nil
 }
 
 func PutItem(svc *dynamodb.DynamoDB, tableName string, tableKey map[string]*dynamodb.AttributeValue, itemData interface{}) (*dynamodb.PutItemOutput, error) {
 	// Convert item data to DynamoDB attribute values
 	itemAttributes, err := dynamodbattribute.MarshalMap(itemData)
 	if err != nil {
-		return nil, fmt.Errorf("Error marshalling item: %s", err.Error())
+		log.Error().Err(err).Interface("item", itemData).Msg("Could not marshal dynamodb item")
+		return nil, err
 	}
 
 	delete(itemAttributes, "key")
 
 	// Put the item
-	return svc.PutItem(&dynamodb.PutItemInput{
+	putItem, putErr := svc.PutItem(&dynamodb.PutItemInput{
 		TableName: aws.String(tableName),
 		Item:      CombineAttributes(tableKey, itemAttributes),
 	})
+	if putErr != nil {
+		log.Error().Err(putErr).Str("table_name", tableName).Interface("table_key", tableKey).Interface("item", itemData).Msg("Dynamodb put item errored")
+		return nil, putErr
+	}
+
+	return putItem, nil
 }
 
 func PutItemRequest(svc *dynamodb.DynamoDB, tableKey map[string]*dynamodb.AttributeValue, itemData interface{}) (*dynamodb.WriteRequest, error) {
 	// Convert item data to DynamoDB attribute values
 	itemAttributes, err := dynamodbattribute.MarshalMap(itemData)
 	if err != nil {
-		return nil, fmt.Errorf("Error marshalling item: %s", err.Error())
+		log.Error().Err(err).Interface("item", itemData).Msg("Could not marshal dynamodb item")
+		return nil, err
 	}
 
 	delete(itemAttributes, "key")
@@ -210,7 +227,15 @@ func BatchWrite(svc *dynamodb.DynamoDB, tableName string, items []*dynamodb.Writ
 	unprocessedWrites = append(unprocessedWrites, output.UnprocessedItems[tableName]...)
 
 	if err != nil {
-		log.Printf("Error in BatchWriteItem: %s", err.Error())
+		itemsArray := zerolog.Arr()
+
+		for _, item := range items {
+			itemsArray.Interface(item.PutRequest.Item)
+		}
+
+		log.Error().Err(err).Str("table_name", tableName).Array("items", itemsArray).Msg("Dynamodb batch write failed")
+	} else {
+		log.Info().Str("table_name", tableName).Msg("Dynamodb batch write succeeded")
 	}
 
 	return unprocessedWrites
@@ -218,6 +243,7 @@ func BatchWrite(svc *dynamodb.DynamoDB, tableName string, items []*dynamodb.Writ
 
 func DistributedBatchWrites(svc *dynamodb.DynamoDB, batchwriteArgs *BatchwriteArgs) *BatchwriteArgs {
 	if batchwriteArgs.MaxBatchSize < 1 || batchwriteArgs.MaxBatchSize > AWSMaxBatchSize {
+		log.Info().Str("table_name", batchwriteArgs.TableName).Int("max_batch_size", batchwriteArgs.MaxBatchSize).Msg("Batch writes attempted with invalid max batch size")
 		batchwriteArgs.MaxBatchSize = AWSMaxBatchSize
 	}
 

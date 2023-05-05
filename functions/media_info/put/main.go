@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -27,12 +26,12 @@ func HandleRequest(ctx context.Context, userMediaEntry dynamo_types.UserMediaEnt
 
 	tableKey, keyErr := dynamo_types.GetCompositeKey(userMediaEntry.Key.MediaType+"#"+userMediaEntry.Key.Username, userMediaEntry.Key.MediaIdentifier)
 	if keyErr != nil {
-		return fmt.Errorf("Error getting table key: %s", keyErr.Error())
+		return keyErr
 	}
 
 	_, updateErr := dynamo_types.UpdateItem(svc, "media", tableKey, userMediaEntry)
 	if updateErr != nil {
-		return fmt.Errorf("Error updating DynamoDB item: %s", updateErr.Error())
+		return updateErr
 	}
 
 	return nil

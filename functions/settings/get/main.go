@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"errors"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
@@ -25,27 +27,29 @@ func init() {
 
 func HandleRequest(ctx context.Context, key dynamo_types.UserSettingsKey) (*dynamo_types.UserSettings, error) {
 	tableKey, keyErr := dynamodbattribute.MarshalMap(key)
-
 	if keyErr != nil {
-		return nil, fmt.Errorf("Error marshalling key: %s", keyErr.Error())
+		log.Error().Err(keyErr).Str("table", "settings").Interface("key", key).Msg("Could not unmarshal dynamodb key")
+		return nil, keyErr
 	}
 
 	result, getErr := svc.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String("settings"),
 		Key:       tableKey,
 	})
-
 	if getErr != nil {
-		return nil, fmt.Errorf("Error getting DynamoDB item: %s", getErr.Error())
+		log.Error().Str("table", "settings").Interface("key", key).Msg("Dynamodb failed to get item")
+		return nil, getErr
 	}
 
 	if result.Item == nil || len(result.Item) == 0 {
-		return nil, fmt.Errorf("Item not found in table")
+		log.Info().Str("table", "settings").Interface("key", key).Msg("Item not in table")
+		return nil, errors.New("Item not found in table")
 	}
 
 	optionArgs := dynamo_types.UserSettings{}
 	if unmarshalErr := dynamodbattribute.UnmarshalMap(result.Item, &optionArgs); unmarshalErr != nil {
-		return nil, fmt.Errorf("Error unmarshalling item: %s", unmarshalErr.Error())
+		log.Error().Err(unmarshalErr).Str("table", "settings").Interface("key", key).Interface("item", result.Item).Msg("Could not unmarshal dynamodb item")
+		return nil, unmarshalErr
 	}
 	optionArgs.Key = key
 

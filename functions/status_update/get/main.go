@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"github.com/rs/zerolog/log"
 
 	dynamo_types "github.com/KamWithK/exSTATic-backend"
 )
@@ -31,7 +32,7 @@ func init() {
 func HandleRequest(ctx context.Context, dateArgs DateArgs) (*dynamo_types.UserMediaStat, error) {
 	tableKey, keyErr := dynamo_types.GetCompositeKey(dateArgs.Key.MediaType+"#"+dateArgs.Key.Username, dynamo_types.ZeroPadInt64(dateArgs.DateTime)+"#"+dateArgs.Key.MediaIdentifier)
 	if keyErr != nil {
-		return nil, fmt.Errorf("Error getting table key: %s", keyErr.Error())
+		return nil, keyErr
 	}
 
 	result, getErr := svc.GetItem(&dynamodb.GetItemInput{
@@ -39,16 +40,19 @@ func HandleRequest(ctx context.Context, dateArgs DateArgs) (*dynamo_types.UserMe
 		Key:       tableKey,
 	})
 	if getErr != nil {
-		return nil, fmt.Errorf("Error getting DynamoDB item: %s", getErr.Error())
+		log.Error().Str("table", "media").Interface("key", dateArgs.Key).Msg("Dynamodb failed to get item")
+		return nil, getErr
 	}
 
 	if result.Item == nil || len(result.Item) == 0 {
-		return nil, fmt.Errorf("Item not found in table")
+		log.Info().Str("table", "media").Interface("key", dateArgs.Key).Msg("Item not in table")
+		return nil, errors.New("Item not found in table")
 	}
 
 	mediaStats := dynamo_types.UserMediaStat{}
 	if unmarshalErr := dynamodbattribute.UnmarshalMap(result.Item, &mediaStats); unmarshalErr != nil {
-		return nil, fmt.Errorf("Error unmarshalling item: %s", unmarshalErr.Error())
+		log.Error().Err(unmarshalErr).Str("table", "media").Interface("key", dateArgs.Key).Interface("item", result.Item).Msg("Could not unmarshal dynamodb item")
+		return nil, unmarshalErr
 	}
 	mediaStats.Key = dateArgs.Key
 

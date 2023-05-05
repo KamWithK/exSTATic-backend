@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"github.com/rs/zerolog/log"
 
 	dynamo_types "github.com/KamWithK/exSTATic-backend"
 )
@@ -44,7 +45,7 @@ func getDay(targetDay int64, key dynamo_types.UserMediaKey) (map[string]*dynamod
 	// Get key which represents this media today
 	tableKey, keyErr := dynamo_types.GetCompositeKey(key.MediaType+"#"+key.Username, dynamo_types.ZeroPadInt64(targetDay)+"#"+key.MediaIdentifier)
 	if keyErr != nil {
-		return nil, nil, fmt.Errorf("Error getting table key: %s", keyErr.Error())
+		return nil, nil, keyErr
 	}
 
 	// Get entry from database if it exists
@@ -53,12 +54,14 @@ func getDay(targetDay int64, key dynamo_types.UserMediaKey) (map[string]*dynamod
 		Key:       tableKey,
 	})
 	if getErr != nil {
-		return nil, nil, fmt.Errorf("Error getting DynamoDB item: %s", getErr.Error())
+		log.Info().Str("table", "media").Interface("key", key).Msg("Item not in table")
+		return nil, nil, getErr
 	}
 
 	currentStats := dynamo_types.UserMediaStat{}
 	if unmarshalErr := dynamodbattribute.UnmarshalMap(result.Item, &currentStats); unmarshalErr != nil {
-		return nil, nil, fmt.Errorf("Error unmarshalling item: %s", unmarshalErr.Error())
+		log.Error().Err(unmarshalErr).Str("table", "media").Interface("key", key).Interface("item", result.Item).Msg("Could not unmarshal dynamodb item")
+		return nil, nil, unmarshalErr
 	}
 
 	currentStats.Key = key
@@ -74,7 +77,8 @@ func whichDay(dateTime int64, timezone string, key dynamo_types.UserMediaKey) (m
 	// Location information
 	location, locationErr := time.LoadLocation(timezone)
 	if locationErr != nil {
-		return nil, nil, fmt.Errorf("Error loading location: %s", locationErr.Error())
+		log.Debug().Err(locationErr).Str("timezone", timezone).Send()
+		return nil, nil, locationErr
 	}
 	localTime := timeNow.In(location)
 
@@ -141,13 +145,14 @@ func HandleRequest(ctx context.Context, statusArgs StatusArgs) error {
 
 	// Anti-cheat measure
 	if timeNow.Sub(givenTime) > 24*time.Hour {
-		return fmt.Errorf("Time error: First given time is more than 24 hours in the past")
+		err := errors.New("First given time is more than 24 hours in the past")
+		log.Info().Err(err).Send()
 	}
 
 	// Find day
 	tableKey, userMediaStats, findDayErr := whichDay(givenTime.Unix(), statusArgs.Timezone, statusArgs.Key)
 	if findDayErr != nil {
-		return fmt.Errorf("Error extracting the current day: %s", findDayErr)
+		return findDayErr
 	}
 
 	// Process time data
@@ -156,7 +161,7 @@ func HandleRequest(ctx context.Context, statusArgs StatusArgs) error {
 	// Put item
 	_, updateErr := dynamo_types.UpdateItem(svc, "media", tableKey, userMediaStats)
 	if updateErr != nil {
-		return fmt.Errorf("Error updating DynamoDB item: %s", updateErr.Error())
+		return updateErr
 	}
 
 	return nil
