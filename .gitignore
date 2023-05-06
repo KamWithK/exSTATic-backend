@@ -16,3 +16,27 @@
 
 # Go workspace file
 go.work
+
+# Docker
+.vagrant*
+bin
+docker/docker
+.*.swp
+a.out
+*.orig
+build_src
+.flymake*
+.idea
+.DS_Store
+docs/_build
+docs/_static
+docs/_templates
+.gopath/
+.dotcloud
+bundles/
+.hg/
+.git/
+vendor/pkg/
+pyenv
+Vagrantfile
+volume/**

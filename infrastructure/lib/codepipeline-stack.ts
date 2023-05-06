@@ -3,7 +3,7 @@ import { RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib';
 import { CodePipeline, CodePipelineSource, ManualApprovalStep, ShellStep } from 'aws-cdk-lib/pipelines';
 
 import { PIPELINE_CONFIG, DEV_ENV_ENVIRONMENT, TEST_ENV_ENVIRONMENT, PROD_ENV_ENVIRONMENT, INFRASTRUCTURE_FOLDER } from '../config';
-import { CodePipelineStage } from './codepipeline-stage';
+import { EnvironmentStage } from './environment-stage';
 import { Cache, ComputeType, LinuxBuildImage } from 'aws-cdk-lib/aws-codebuild';
 import { BlockPublicAccess, Bucket } from 'aws-cdk-lib/aws-s3';
 
@@ -37,15 +37,15 @@ export class CodePipelineStack extends Stack {
             useChangeSets: false
         });
 
-        const devStage = new CodePipelineStage(this, 'devStage', {
+        const devStage = new EnvironmentStage(this, 'devStage', {
             env: DEV_ENV_ENVIRONMENT,
             environmentType: 'dev'
         });
-        const testStage = new CodePipelineStage(this, 'testStage', {
+        const testStage = new EnvironmentStage(this, 'testStage', {
             env: TEST_ENV_ENVIRONMENT,
             environmentType: 'test'
         });
-        const prodStage = new CodePipelineStage(this, 'prodStage', {
+        const prodStage = new EnvironmentStage(this, 'prodStage', {
             env: PROD_ENV_ENVIRONMENT,
             environmentType: 'prod'
         });
