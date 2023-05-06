@@ -19,7 +19,7 @@ go.work
 
 # Docker
 .vagrant*
-bin
+/bin
 docker/docker
 .*.swp
 a.out
