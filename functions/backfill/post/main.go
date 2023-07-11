@@ -47,6 +47,13 @@ func putRequest(pk string, sk string, userMedia interface{}) *dynamodb.WriteRequ
 func HandleRequest(ctx context.Context, history BackfillArgs) (*dynamo_types.BatchwriteArgs, error) {
 	username := history.Username
 
+	if len(username) == 0 {
+		err := errors.New("Invalid username")
+		log.Info().Err(err).Send()
+
+		return nil, err
+	}
+
 	writeRequests := []*dynamodb.WriteRequest{}
 
 	for _, userMedia := range history.MediaEntries {
