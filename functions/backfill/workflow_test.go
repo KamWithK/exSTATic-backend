@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/lambda"
@@ -26,8 +27,8 @@ func init() {
 		// SharedConfigState: session.SharedConfigEnable,
 		Config: aws.Config{
 			Endpoint:    aws.String(EndpointURL),
-			Region:      aws.String("us-east-1"),
-			Credentials: credentials.NewEnvCredentials(),
+			Region:      aws.String(endpoints.UsEast1RegionID),
+			Credentials: credentials.NewStaticCredentials("foo", "var", ""),
 		},
 	}))
 	// dynamoSvc = dynamodb.New(sess)
