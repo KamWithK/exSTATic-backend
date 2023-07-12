@@ -58,14 +58,20 @@ func HandleRequest(ctx context.Context, history BackfillArgs) (*dynamo_types.Bat
 
 	for _, userMedia := range history.MediaEntries {
 		writeRequest := putRequest(userMedia.Key.MediaType+"#"+username, userMedia.Key.MediaIdentifier, &userMedia)
-		if writeRequest != nil {
+		if userMedia.Key.Username != username {
+			err := errors.New("Username mismatch")
+			log.Info().Err(err).Send()
+		} else if writeRequest != nil {
 			writeRequests = append(writeRequests, writeRequest)
 		}
 	}
 
 	for _, userMedia := range history.MediaStats {
 		writeRequest := putRequest(userMedia.Key.MediaType+"#"+username, dynamo_types.ZeroPadInt64(*userMedia.Date)+"#"+userMedia.Key.MediaIdentifier, &userMedia)
-		if writeRequest != nil {
+		if userMedia.Key.Username != username {
+			err := errors.New("Username mismatch")
+			log.Info().Err(err).Send()
+		} else if writeRequest != nil {
 			writeRequests = append(writeRequests, writeRequest)
 		}
 	}

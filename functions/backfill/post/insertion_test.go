@@ -70,15 +70,30 @@ func TestNull(t *testing.T) {
 
 func TestNoUsername(t *testing.T) {
 	fake := faker.New()
-	user := fake.Person().Name()
 
 	result, err := HandleRequest(nil, BackfillArgs{
 		Username:     "",
-		MediaEntries: RandomMediaEntries(fake, user, 3),
+		MediaEntries: RandomMediaEntries(fake, "", 3),
 	})
 
 	assert.Nil(t, result, "Writes can't be performed when no username is entered")
 	assert.Error(t, err)
+}
+
+func TestMultipleUsernames(t *testing.T) {
+	fake := faker.New()
+	user1 := fake.Person().Name()
+	user2 := fake.Person().Name()
+
+	invalidEntries, validEntries := 5, 3
+
+	results, err := HandleRequest(nil, BackfillArgs{
+		Username:     user1,
+		MediaEntries: append(RandomMediaEntries(fake, user2, invalidEntries), RandomMediaEntries(fake, user1, validEntries)...),
+	})
+
+	assert.Len(t, results.WriteRequests, validEntries, "Entries with different usernames aren't valid")
+	assert.NoError(t, err)
 }
 
 func TestWriteMediaEntries(t *testing.T) {
