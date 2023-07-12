@@ -2,14 +2,28 @@ package main
 
 import (
 	"math/rand"
+	"strings"
 	"testing"
 	"time"
 
 	dynamo_types "github.com/KamWithK/exSTATic-backend"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/jaswdr/faker"
 	"github.com/stretchr/testify/assert"
 )
+
+type IntermediateEntryItem struct {
+	PK string `dynamodbav:"pk"`
+	SK string `dynamodbav:"sk"`
+	dynamo_types.UserMediaEntry
+}
+
+type IntermediateStatItem struct {
+	PK string `dynamodbav:"pk"`
+	SK string `dynamodbav:"sk"`
+	dynamo_types.UserMediaStat
+}
 
 func RandomVNKey(fake faker.Faker, user string) dynamo_types.UserMediaKey {
 	return dynamo_types.UserMediaKey{
@@ -100,13 +114,34 @@ func TestWriteMediaEntries(t *testing.T) {
 	fake := faker.New()
 	user := fake.Person().Name()
 
+	inputMediaEntries, producedMediaEntries := RandomMediaEntries(fake, user, 100), []dynamo_types.UserMediaEntry{}
+
 	results, err := HandleRequest(nil, BackfillArgs{
 		Username:     user,
-		MediaEntries: RandomMediaEntries(fake, user, 100),
+		MediaEntries: inputMediaEntries,
 	})
 
 	assert.NoError(t, err)
 	assert.NotNil(t, results)
+
+	for _, writeRequest := range results.WriteRequests {
+		intermediateItem := IntermediateEntryItem{}
+
+		unmarshalErr := dynamodbattribute.UnmarshalMap(writeRequest.PutRequest.Item, &intermediateItem)
+		assert.NoError(t, unmarshalErr)
+
+		splitPK := strings.Split(intermediateItem.PK, "#")
+		assert.Len(t, splitPK, 2, "PK should precisely be composed of the media type and username")
+		intermediateItem.Key = dynamo_types.UserMediaKey{
+			Username:        splitPK[1],
+			MediaType:       splitPK[0],
+			MediaIdentifier: intermediateItem.SK,
+		}
+
+		producedMediaEntries = append(producedMediaEntries, intermediateItem.UserMediaEntry)
+	}
+
+	assert.Equal(t, inputMediaEntries, producedMediaEntries)
 }
 
 func TestWriteMediaStats(t *testing.T) {
@@ -114,17 +149,38 @@ func TestWriteMediaStats(t *testing.T) {
 	user := fake.Person().Name()
 
 	mediaEntries := RandomMediaEntries(fake, user, 100)
-	var mediaStats []dynamo_types.UserMediaStat
+	inputMediaStats, producedMediaStats := []dynamo_types.UserMediaStat{}, []dynamo_types.UserMediaStat{}
 
 	for _, mediaEntry := range mediaEntries {
-		mediaStats = append(mediaStats, RandomMediaStats(fake, mediaEntry.Key, 30, 0.8)...)
+		inputMediaStats = append(inputMediaStats, RandomMediaStats(fake, mediaEntry.Key, 30, 0.8)...)
 	}
 
 	results, err := HandleRequest(nil, BackfillArgs{
 		Username:   user,
-		MediaStats: mediaStats,
+		MediaStats: inputMediaStats,
 	})
 
 	assert.NoError(t, err)
 	assert.NotNil(t, results)
+
+	for _, writeRequest := range results.WriteRequests {
+		intermediateItem := IntermediateStatItem{}
+
+		unmarshalErr := dynamodbattribute.UnmarshalMap(writeRequest.PutRequest.Item, &intermediateItem)
+		assert.NoError(t, unmarshalErr)
+
+		splitPK := strings.Split(intermediateItem.PK, "#")
+		splitSK := strings.Split(intermediateItem.SK, "#")
+		assert.Len(t, splitPK, 2, "PK should precisely be composed of the media type and username")
+		assert.Len(t, splitSK, 2, "SK should precisely be composed of the zero padded unix epoch date and media identifier")
+		intermediateItem.Key = dynamo_types.UserMediaKey{
+			Username:        splitPK[1],
+			MediaType:       splitPK[0],
+			MediaIdentifier: splitSK[1],
+		}
+
+		producedMediaStats = append(producedMediaStats, intermediateItem.UserMediaStat)
+	}
+
+	assert.Equal(t, inputMediaStats, producedMediaStats)
 }
