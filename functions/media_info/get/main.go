@@ -44,13 +44,13 @@ func HandleRequest(ctx context.Context, key utils.UserMediaKey) (*utils.UserMedi
 		return nil, errors.New("Item not found in table")
 	}
 
-	optionArgs := utils.UserMediaEntry{}
-	if unmarshalErr := dynamodbattribute.UnmarshalMap(result.Item, &optionArgs); unmarshalErr != nil {
+	userMediaEntryArgs := utils.UserMediaEntry{}
+	if unmarshalErr := dynamodbattribute.UnmarshalMap(result.Item, &userMediaEntryArgs); unmarshalErr != nil {
 		log.Error().Err(unmarshalErr).Str("table", "media").Interface("key", key).Interface("item", result.Item).Msg("Could not unmarshal dynamodb item")
 		return nil, unmarshalErr
 	}
 
-	return &optionArgs, nil
+	return &userMediaEntryArgs, nil
 }
 
 func main() {
