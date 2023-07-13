@@ -27,7 +27,7 @@ func HandleRequest(ctx context.Context, args *utils.BatchwriteArgs) (*utils.Batc
 	nextArgs := utils.DistributedBatchWrites(svc, args)
 
 	if len(nextArgs.WriteRequests) == 0 {
-		log.Info().Msg("Successfully wrote full batch to DynamoDB")
+		log.Info().Msg("Dynamodb batch operations finished")
 		return nil, nil
 	}
 
