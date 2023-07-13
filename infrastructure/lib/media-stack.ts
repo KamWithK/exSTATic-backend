@@ -5,7 +5,7 @@ import { Table } from 'aws-cdk-lib/aws-dynamodb';
 import { HttpLambdaIntegration } from '@aws-cdk/aws-apigatewayv2-integrations-alpha';
 import { AddRoutesOptions, HttpMethod } from '@aws-cdk/aws-apigatewayv2-alpha';
 import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
-import { StateMachine } from 'aws-cdk-lib/aws-stepfunctions';
+import { DefinitionBody, StateMachine } from 'aws-cdk-lib/aws-stepfunctions';
 import { FUNCTIONS_FOLDER } from '../config';
 import { HttpStepFunctionsIntegration } from './http-state-machine-integration';
 
@@ -56,7 +56,7 @@ export class MediaStack extends Stack {
         });
         backfillPostTask.addRetry();
         const backfillPostStateMachine = new StateMachine(this, 'backfillPostStateMachine', {
-            definition: backfillPostTask
+            definitionBody: DefinitionBody.fromChainable(backfillPostTask)
         });
 
         const mediaInfoGetIntegration = new HttpLambdaIntegration('mediaInfoGetIntegration', mediaInfoGetFunction);
