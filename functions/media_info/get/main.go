@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/rs/zerolog/log"
 
-	dynamo_types "github.com/KamWithK/exSTATic-backend"
+	"github.com/KamWithK/exSTATic-backend/utils"
 )
 
 var sess *session.Session
@@ -24,8 +24,8 @@ func init() {
 	svc = dynamodb.New(sess)
 }
 
-func HandleRequest(ctx context.Context, key dynamo_types.UserMediaKey) (*dynamo_types.UserSettings, error) {
-	tableKey, keyErr := dynamo_types.GetCompositeKey(key.MediaType+"#"+key.Username, key.MediaIdentifier)
+func HandleRequest(ctx context.Context, key utils.UserMediaKey) (*utils.UserSettings, error) {
+	tableKey, keyErr := utils.GetCompositeKey(key.MediaType+"#"+key.Username, key.MediaIdentifier)
 	if keyErr != nil {
 		return nil, keyErr
 	}
@@ -44,7 +44,7 @@ func HandleRequest(ctx context.Context, key dynamo_types.UserMediaKey) (*dynamo_
 		return nil, errors.New("Item not found in table")
 	}
 
-	optionArgs := dynamo_types.UserSettings{}
+	optionArgs := utils.UserSettings{}
 	if unmarshalErr := dynamodbattribute.UnmarshalMap(result.Item, &optionArgs); unmarshalErr != nil {
 		log.Error().Err(unmarshalErr).Str("table", "media").Interface("key", key).Interface("item", result.Item).Msg("Could not unmarshal dynamodb item")
 		return nil, unmarshalErr

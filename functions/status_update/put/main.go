@@ -5,14 +5,13 @@ import (
 	"errors"
 	"time"
 
+	"github.com/KamWithK/exSTATic-backend/utils"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/rs/zerolog/log"
-
-	dynamo_types "github.com/KamWithK/exSTATic-backend"
 )
 
 var sess *session.Session
@@ -27,11 +26,11 @@ type ProgressStatus struct {
 }
 
 type StatusArgs struct {
-	Key        dynamo_types.UserMediaKey `json:"key" binding:"required"`
-	Stats      dynamo_types.MediaStat    `json:"stats" binding:"required"`
-	Progress   []ProgressStatus          `json:"progress" binding:"required"`
-	Timezone   string                    `json:"timezone" binding:"required"`
-	MaxAFKTime int16                     `json:"max_afk_time"`
+	Key        utils.UserMediaKey `json:"key" binding:"required"`
+	Stats      utils.MediaStat    `json:"stats" binding:"required"`
+	Progress   []ProgressStatus   `json:"progress" binding:"required"`
+	Timezone   string             `json:"timezone" binding:"required"`
+	MaxAFKTime int16              `json:"max_afk_time"`
 }
 
 func init() {
@@ -41,9 +40,9 @@ func init() {
 	svc = dynamodb.New(sess)
 }
 
-func getDay(targetDay int64, key dynamo_types.UserMediaKey) (map[string]*dynamodb.AttributeValue, *dynamo_types.UserMediaStat, error) {
+func getDay(targetDay int64, key utils.UserMediaKey) (map[string]*dynamodb.AttributeValue, *utils.UserMediaStat, error) {
 	// Get key which represents this media today
-	tableKey, keyErr := dynamo_types.GetCompositeKey(key.MediaType+"#"+key.Username, dynamo_types.ZeroPadInt64(targetDay)+"#"+key.MediaIdentifier)
+	tableKey, keyErr := utils.GetCompositeKey(key.MediaType+"#"+key.Username, utils.ZeroPadInt64(targetDay)+"#"+key.MediaIdentifier)
 	if keyErr != nil {
 		return nil, nil, keyErr
 	}
@@ -58,7 +57,7 @@ func getDay(targetDay int64, key dynamo_types.UserMediaKey) (map[string]*dynamod
 		return nil, nil, getErr
 	}
 
-	currentStats := dynamo_types.UserMediaStat{}
+	currentStats := utils.UserMediaStat{}
 	if unmarshalErr := dynamodbattribute.UnmarshalMap(result.Item, &currentStats); unmarshalErr != nil {
 		log.Error().Err(unmarshalErr).Str("table", "media").Interface("key", key).Interface("item", result.Item).Msg("Could not unmarshal dynamodb item")
 		return nil, nil, unmarshalErr
@@ -70,7 +69,7 @@ func getDay(targetDay int64, key dynamo_types.UserMediaKey) (map[string]*dynamod
 	return tableKey, &currentStats, nil
 }
 
-func whichDay(dateTime int64, timezone string, key dynamo_types.UserMediaKey) (map[string]*dynamodb.AttributeValue, *dynamo_types.UserMediaStat, error) {
+func whichDay(dateTime int64, timezone string, key utils.UserMediaKey) (map[string]*dynamodb.AttributeValue, *utils.UserMediaStat, error) {
 	// Given time
 	timeNow := time.Unix(dateTime, 0)
 
@@ -114,7 +113,7 @@ func whichDay(dateTime int64, timezone string, key dynamo_types.UserMediaKey) (m
 	}
 }
 
-func processProgress(statusArgs *StatusArgs, previousSats *dynamo_types.UserMediaStat, morningStars int) {
+func processProgress(statusArgs *StatusArgs, previousSats *utils.UserMediaStat, morningStars int) {
 	// Set stats reference
 	stats := &previousSats.Stats
 	lastTime := time.Unix(previousSats.LastUpdate, 0)
@@ -159,7 +158,7 @@ func HandleRequest(ctx context.Context, statusArgs StatusArgs) error {
 	processProgress(&statusArgs, userMediaStats, 4)
 
 	// Put item
-	_, updateErr := dynamo_types.UpdateItem(svc, "media", tableKey, userMediaStats)
+	_, updateErr := utils.UpdateItem(svc, "media", tableKey, userMediaStats)
 	if updateErr != nil {
 		return updateErr
 	}

@@ -4,22 +4,21 @@ import (
 	"context"
 	"errors"
 
+	"github.com/KamWithK/exSTATic-backend/utils"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/rs/zerolog/log"
-
-	dynamo_types "github.com/KamWithK/exSTATic-backend"
 )
 
 var sess *session.Session
 var svc *dynamodb.DynamoDB
 
 type DateArgs struct {
-	Key      dynamo_types.UserMediaKey `json:"key" binding:"required"`
-	DateTime int64                     `json:"datetime" binding:"required"`
+	Key      utils.UserMediaKey `json:"key" binding:"required"`
+	DateTime int64              `json:"datetime" binding:"required"`
 }
 
 func init() {
@@ -29,8 +28,8 @@ func init() {
 	svc = dynamodb.New(sess)
 }
 
-func HandleRequest(ctx context.Context, dateArgs DateArgs) (*dynamo_types.UserMediaStat, error) {
-	tableKey, keyErr := dynamo_types.GetCompositeKey(dateArgs.Key.MediaType+"#"+dateArgs.Key.Username, dynamo_types.ZeroPadInt64(dateArgs.DateTime)+"#"+dateArgs.Key.MediaIdentifier)
+func HandleRequest(ctx context.Context, dateArgs DateArgs) (*utils.UserMediaStat, error) {
+	tableKey, keyErr := utils.GetCompositeKey(dateArgs.Key.MediaType+"#"+dateArgs.Key.Username, utils.ZeroPadInt64(dateArgs.DateTime)+"#"+dateArgs.Key.MediaIdentifier)
 	if keyErr != nil {
 		return nil, keyErr
 	}
@@ -49,7 +48,7 @@ func HandleRequest(ctx context.Context, dateArgs DateArgs) (*dynamo_types.UserMe
 		return nil, errors.New("Item not found in table")
 	}
 
-	mediaStats := dynamo_types.UserMediaStat{}
+	mediaStats := utils.UserMediaStat{}
 	if unmarshalErr := dynamodbattribute.UnmarshalMap(result.Item, &mediaStats); unmarshalErr != nil {
 		log.Error().Err(unmarshalErr).Str("table", "media").Interface("key", dateArgs.Key).Interface("item", result.Item).Msg("Could not unmarshal dynamodb item")
 		return nil, unmarshalErr
