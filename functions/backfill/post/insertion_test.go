@@ -11,7 +11,7 @@ import (
 )
 
 func TestNull(t *testing.T) {
-	result, err := HandleRequest(nil, BackfillArgs{})
+	result, err := HandleRequest(nil, utils.BackfillArgs{})
 
 	assert.Nil(t, result, "No input => no writes")
 	assert.Error(t, err)
@@ -20,7 +20,7 @@ func TestNull(t *testing.T) {
 func TestNoUsername(t *testing.T) {
 	fake := faker.New()
 
-	result, err := HandleRequest(nil, BackfillArgs{
+	result, err := HandleRequest(nil, utils.BackfillArgs{
 		Username:     "",
 		MediaEntries: utils.RandomMediaEntries(fake, "", 3),
 	})
@@ -36,7 +36,7 @@ func TestMultipleUsernames(t *testing.T) {
 
 	invalidEntries, validEntries := 5, 3
 
-	results, err := HandleRequest(nil, BackfillArgs{
+	results, err := HandleRequest(nil, utils.BackfillArgs{
 		Username:     user1,
 		MediaEntries: append(utils.RandomMediaEntries(fake, user2, invalidEntries), utils.RandomMediaEntries(fake, user1, validEntries)...),
 	})
@@ -51,7 +51,7 @@ func TestWriteMediaEntries(t *testing.T) {
 
 	inputMediaEntries, producedMediaEntries := utils.RandomMediaEntries(fake, user, 100), []utils.UserMediaEntry{}
 
-	results, err := HandleRequest(nil, BackfillArgs{
+	results, err := HandleRequest(nil, utils.BackfillArgs{
 		Username:     user,
 		MediaEntries: inputMediaEntries,
 	})
@@ -90,7 +90,7 @@ func TestWriteMediaStats(t *testing.T) {
 		inputMediaStats = append(inputMediaStats, utils.RandomMediaStats(fake, mediaEntry.Key, 30, 0.8)...)
 	}
 
-	results, err := HandleRequest(nil, BackfillArgs{
+	results, err := HandleRequest(nil, utils.BackfillArgs{
 		Username:   user,
 		MediaStats: inputMediaStats,
 	})

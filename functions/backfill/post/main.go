@@ -7,27 +7,10 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 
 	"github.com/KamWithK/exSTATic-backend/utils"
 )
-
-var sess *session.Session
-var svc *dynamodb.DynamoDB
-
-type BackfillArgs struct {
-	Username     string                 `json:"username"`
-	MediaEntries []utils.UserMediaEntry `json:"media_entries"`
-	MediaStats   []utils.UserMediaStat  `json:"media_stats"`
-}
-
-func init() {
-	sess = session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}))
-	svc = dynamodb.New(sess)
-}
 
 func putRequest(pk string, sk string, userMedia interface{}) *dynamodb.WriteRequest {
 	tableKey, keyErr := utils.GetCompositeKey(pk, sk)
@@ -35,7 +18,7 @@ func putRequest(pk string, sk string, userMedia interface{}) *dynamodb.WriteRequ
 		return nil
 	}
 
-	writeRequest, writeErr := utils.PutItemRequest(svc, tableKey, userMedia)
+	writeRequest, writeErr := utils.PutItemRequest(tableKey, userMedia)
 
 	if writeErr != nil {
 		return nil
@@ -44,7 +27,7 @@ func putRequest(pk string, sk string, userMedia interface{}) *dynamodb.WriteRequ
 	return writeRequest
 }
 
-func HandleRequest(ctx context.Context, history BackfillArgs) (*utils.BatchwriteArgs, error) {
+func HandleRequest(ctx context.Context, history utils.BackfillArgs) (*utils.BatchwriteArgs, error) {
 	username := history.Username
 
 	if len(username) == 0 {

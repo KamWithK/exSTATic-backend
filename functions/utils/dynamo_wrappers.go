@@ -127,7 +127,7 @@ func PutItem(svc *dynamodb.DynamoDB, tableName string, tableKey map[string]*dyna
 	return putItem, nil
 }
 
-func PutItemRequest(svc *dynamodb.DynamoDB, tableKey map[string]*dynamodb.AttributeValue, itemData interface{}) (*dynamodb.WriteRequest, error) {
+func PutItemRequest(tableKey map[string]*dynamodb.AttributeValue, itemData interface{}) (*dynamodb.WriteRequest, error) {
 	// Convert item data to DynamoDB attribute values
 	itemAttributes, err := dynamodbattribute.MarshalMap(itemData)
 	if err != nil {
@@ -154,7 +154,7 @@ func BatchWrite(svc *dynamodb.DynamoDB, tableName string, items []*dynamodb.Writ
 
 	output, err := svc.BatchWriteItem(&dynamodb.BatchWriteItemInput{
 		RequestItems: map[string][]*dynamodb.WriteRequest{
-			tableName: items[:AWSMaxBatchSize],
+			tableName: items[:min(AWSMaxBatchSize, len(items))],
 		},
 	})
 	unprocessedWrites = append(unprocessedWrites, output.UnprocessedItems[tableName]...)
@@ -190,7 +190,8 @@ func DistributedBatchWrites(svc *dynamodb.DynamoDB, batchwriteArgs *BatchwriteAr
 		go func(start int) {
 			defer waitGroup.Done()
 
-			channel <- BatchWrite(svc, batchwriteArgs.TableName, batchwriteArgs.WriteRequests[start:start+batchwriteArgs.MaxBatchSize])
+			end := min(start+batchwriteArgs.MaxBatchSize, len(batchwriteArgs.WriteRequests))
+			channel <- BatchWrite(svc, batchwriteArgs.TableName, batchwriteArgs.WriteRequests[start:end])
 		}(start)
 	}
 
