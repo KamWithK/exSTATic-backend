@@ -35,7 +35,7 @@ func TestWriteMediaEntries(t *testing.T) {
 	fake := faker.New()
 	user := fake.Person().Name()
 
-	inputMediaEntries := models.RandomMediaEntries(fake, user, 1)
+	inputMediaEntries := models.RandomMediaEntries(fake, user, 100)
 	batchwriterArgs, err := models.PutBackfill(models.BackfillArgs{
 		Username:     user,
 		MediaEntries: inputMediaEntries,
