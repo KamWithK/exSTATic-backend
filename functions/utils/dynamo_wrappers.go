@@ -1,23 +1,41 @@
 package utils
 
 import (
-	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
 const AWSMaxBatchSize = 25
 
-func ZeroPadInt64(number int64) string {
-	return fmt.Sprintf("%0*d", strconv.IntSize/4, number)
+type CompositeKey struct {
+	PK interface{} `json:"pk" binding:"required"`
+	SK interface{} `json:"sk"`
+}
+
+type BatchwriteArgs struct {
+	TableName     string                   `json:"table_name"`
+	WriteRequests []*dynamodb.WriteRequest `json:"write_requests"`
+	MaxBatchSize  int                      `json:"max_batch_size" default:"25"`
+}
+
+func GetCompositeKey(pk interface{}, sk interface{}) (map[string]*dynamodb.AttributeValue, error) {
+	var compositeKey = CompositeKey{
+		PK: pk,
+		SK: sk,
+	}
+
+	tableKey, keyErr := dynamodbattribute.MarshalMap(compositeKey)
+	if keyErr != nil {
+		log.Error().Err(keyErr).Interface("pk", pk).Interface("sk", sk).Msg("Could not marshal dynamodb key")
+		return nil, keyErr
+	}
+
+	return tableKey, nil
 }
 
 func AddAttributeIfNotNull(updateExpression string, expressionAttributeNames map[string]*string, expressionAttributeValues map[string]*dynamodb.AttributeValue, attributeName, jsonAttributeName string, value interface{}) (string, map[string]*string, map[string]*dynamodb.AttributeValue) {
@@ -54,21 +72,6 @@ func CreateUpdateExpressionAttributes(optionArgs interface{}) (string, map[strin
 	}
 
 	return updateExpression, expressionAttributeNames, expressionAttributeValues
-}
-
-func GetCompositeKey(pk interface{}, sk interface{}) (map[string]*dynamodb.AttributeValue, error) {
-	var compositeKey = CompositeKey{
-		PK: pk,
-		SK: sk,
-	}
-
-	tableKey, keyErr := dynamodbattribute.MarshalMap(compositeKey)
-	if keyErr != nil {
-		log.Error().Err(keyErr).Interface("pk", pk).Interface("sk", sk).Msg("Could not marshal dynamodb key")
-		return nil, keyErr
-	}
-
-	return tableKey, nil
 }
 
 func CombineAttributes(firstAttributes map[string]*dynamodb.AttributeValue, secondAttributes map[string]*dynamodb.AttributeValue) map[string]*dynamodb.AttributeValue {
@@ -145,72 +148,17 @@ func PutItemRequest(tableKey map[string]*dynamodb.AttributeValue, itemData inter
 	}, nil
 }
 
-func BatchWrite(svc *dynamodb.DynamoDB, tableName string, items []*dynamodb.WriteRequest) []*dynamodb.WriteRequest {
-	unprocessedWrites := []*dynamodb.WriteRequest{}
-
-	if len(items) > AWSMaxBatchSize {
-		unprocessedWrites = append(unprocessedWrites, items[AWSMaxBatchSize:]...)
+func PutRawRequest(pk string, sk string, userMedia interface{}) *dynamodb.WriteRequest {
+	tableKey, keyErr := GetCompositeKey(pk, sk)
+	if keyErr != nil {
+		return nil
 	}
 
-	output, err := svc.BatchWriteItem(&dynamodb.BatchWriteItemInput{
-		RequestItems: map[string][]*dynamodb.WriteRequest{
-			tableName: items[:min(AWSMaxBatchSize, len(items))],
-		},
-	})
-	unprocessedWrites = append(unprocessedWrites, output.UnprocessedItems[tableName]...)
+	writeRequest, writeErr := PutItemRequest(tableKey, userMedia)
 
-	if err != nil {
-		itemsArray := zerolog.Arr()
-
-		for _, item := range items {
-			itemsArray.Interface(item.PutRequest.Item)
-		}
-
-		log.Error().Err(err).Str("table_name", tableName).Array("items", itemsArray).Msg("Dynamodb batch write failed")
-	} else {
-		log.Info().Str("table_name", tableName).Msg("Dynamodb batch write succeeded")
+	if writeErr != nil {
+		return nil
 	}
 
-	return unprocessedWrites
-}
-
-func DistributedBatchWrites(svc *dynamodb.DynamoDB, batchwriteArgs *BatchwriteArgs) *BatchwriteArgs {
-	if batchwriteArgs.MaxBatchSize < 1 || batchwriteArgs.MaxBatchSize > AWSMaxBatchSize {
-		log.Info().Str("table_name", batchwriteArgs.TableName).Int("max_batch_size", batchwriteArgs.MaxBatchSize).Msg("Batch writes attempted with invalid max batch size")
-		batchwriteArgs.MaxBatchSize = AWSMaxBatchSize
-	}
-
-	var waitGroup sync.WaitGroup
-	channel := make(chan []*dynamodb.WriteRequest)
-
-	// Process each batch in separate threads
-	for start := 0; start < len(batchwriteArgs.WriteRequests); start += batchwriteArgs.MaxBatchSize {
-		waitGroup.Add(1)
-
-		go func(start int) {
-			defer waitGroup.Done()
-
-			end := min(start+batchwriteArgs.MaxBatchSize, len(batchwriteArgs.WriteRequests))
-			channel <- BatchWrite(svc, batchwriteArgs.TableName, batchwriteArgs.WriteRequests[start:end])
-		}(start)
-	}
-
-	// Waiting thread to close the channel
-	// Once all batches have been tried
-	go func() {
-		waitGroup.Wait()
-		close(channel)
-	}()
-
-	// Read from the channel concatenating unprocessed writes
-	unprocessedWrites := []*dynamodb.WriteRequest{}
-	for unprocessedWriteBatch := range channel {
-		unprocessedWrites = append(unprocessedWrites, unprocessedWriteBatch...)
-	}
-
-	return &BatchwriteArgs{
-		TableName:     batchwriteArgs.TableName,
-		WriteRequests: unprocessedWrites,
-		MaxBatchSize:  batchwriteArgs.MaxBatchSize,
-	}
+	return writeRequest
 }
