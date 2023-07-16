@@ -20,7 +20,7 @@ func init() {
 }
 
 func HandleRequest(ctx context.Context, userMediaEntry models.UserMediaEntry) error {
-	return models.MediaInfoPut(svc, userMediaEntry)
+	return models.PutMediaInfo(svc, userMediaEntry)
 }
 
 func main() {

@@ -47,7 +47,7 @@ func TestWriteMediaEntries(t *testing.T) {
 	assert.Empty(t, output.WriteRequests)
 
 	for _, original := range inputMediaEntries {
-		result, err := models.MediaInfoGet(dynamoSvc, original.Key)
+		result, err := models.GetMediaInfo(dynamoSvc, original.Key)
 		assert.NoError(t, err)
 		assert.Equal(t, original, *result)
 	}

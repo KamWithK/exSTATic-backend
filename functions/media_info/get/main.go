@@ -20,7 +20,7 @@ func init() {
 }
 
 func HandleRequest(ctx context.Context, key models.UserMediaKey) (*models.UserMediaEntry, error) {
-	return models.MediaInfoGet(svc, key)
+	return models.GetMediaInfo(svc, key)
 }
 
 func main() {
