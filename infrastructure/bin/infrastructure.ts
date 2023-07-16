@@ -16,6 +16,7 @@ if (env.PIPELINE?.toLowerCase() === 'false') {
     const devStage = new EnvironmentStage(app, 'localStage', {
         environmentType: 'local'
     });
+    devStage.synth();
 } else {
     new CodePipelineStack(app, 'codePipelineStack', {
         env: DEV_ENV_ENVIRONMENT

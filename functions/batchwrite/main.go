@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 
-	dynamo_types "github.com/KamWithK/exSTATic-backend"
+	"github.com/KamWithK/exSTATic-backend/utils"
 )
 
 var sess *session.Session
@@ -23,11 +23,11 @@ func init() {
 	svc = dynamodb.New(sess)
 }
 
-func HandleRequest(ctx context.Context, args *dynamo_types.BatchwriteArgs) (*dynamo_types.BatchwriteArgs, error) {
-	nextArgs := dynamo_types.DistributedBatchWrites(svc, args)
+func HandleRequest(ctx context.Context, args *utils.BatchwriteArgs) (*utils.BatchwriteArgs, error) {
+	nextArgs := utils.DistributedBatchWrites(svc, args)
 
 	if len(nextArgs.WriteRequests) == 0 {
-		log.Info().Msg("Successfully wrote full batch to DynamoDB")
+		log.Info().Msg("Dynamodb batch operations finished")
 		return nil, nil
 	}
 

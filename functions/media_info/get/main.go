@@ -2,16 +2,11 @@ package main
 
 import (
 	"context"
-	"errors"
 
+	"github.com/KamWithK/exSTATic-backend/models"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	"github.com/rs/zerolog/log"
-
-	dynamo_types "github.com/KamWithK/exSTATic-backend"
 )
 
 var sess *session.Session
@@ -24,33 +19,8 @@ func init() {
 	svc = dynamodb.New(sess)
 }
 
-func HandleRequest(ctx context.Context, key dynamo_types.UserMediaKey) (*dynamo_types.UserSettings, error) {
-	tableKey, keyErr := dynamo_types.GetCompositeKey(key.MediaType+"#"+key.Username, key.MediaIdentifier)
-	if keyErr != nil {
-		return nil, keyErr
-	}
-
-	result, getErr := svc.GetItem(&dynamodb.GetItemInput{
-		TableName: aws.String("media"),
-		Key:       tableKey,
-	})
-	if getErr != nil {
-		log.Error().Str("table", "media").Interface("key", key).Msg("Dynamodb failed to get item")
-		return nil, getErr
-	}
-
-	if result.Item == nil {
-		log.Info().Str("table", "media").Interface("key", key).Msg("Item not in table")
-		return nil, errors.New("Item not found in table")
-	}
-
-	optionArgs := dynamo_types.UserSettings{}
-	if unmarshalErr := dynamodbattribute.UnmarshalMap(result.Item, &optionArgs); unmarshalErr != nil {
-		log.Error().Err(unmarshalErr).Str("table", "media").Interface("key", key).Interface("item", result.Item).Msg("Could not unmarshal dynamodb item")
-		return nil, unmarshalErr
-	}
-
-	return &optionArgs, nil
+func HandleRequest(ctx context.Context, key models.UserMediaKey) (*models.UserMediaEntry, error) {
+	return models.GetMediaInfo(svc, key)
 }
 
 func main() {

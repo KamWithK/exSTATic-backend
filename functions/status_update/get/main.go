@@ -2,25 +2,15 @@ package main
 
 import (
 	"context"
-	"errors"
 
+	"github.com/KamWithK/exSTATic-backend/models"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-	"github.com/rs/zerolog/log"
-
-	dynamo_types "github.com/KamWithK/exSTATic-backend"
 )
 
 var sess *session.Session
 var svc *dynamodb.DynamoDB
-
-type DateArgs struct {
-	Key      dynamo_types.UserMediaKey `json:"key" binding:"required"`
-	DateTime int64                     `json:"datetime" binding:"required"`
-}
 
 func init() {
 	sess = session.Must(session.NewSessionWithOptions(session.Options{
@@ -29,34 +19,8 @@ func init() {
 	svc = dynamodb.New(sess)
 }
 
-func HandleRequest(ctx context.Context, dateArgs DateArgs) (*dynamo_types.UserMediaStat, error) {
-	tableKey, keyErr := dynamo_types.GetCompositeKey(dateArgs.Key.MediaType+"#"+dateArgs.Key.Username, dynamo_types.ZeroPadInt64(dateArgs.DateTime)+"#"+dateArgs.Key.MediaIdentifier)
-	if keyErr != nil {
-		return nil, keyErr
-	}
-
-	result, getErr := svc.GetItem(&dynamodb.GetItemInput{
-		TableName: aws.String("media"),
-		Key:       tableKey,
-	})
-	if getErr != nil {
-		log.Error().Str("table", "media").Interface("key", dateArgs.Key).Msg("Dynamodb failed to get item")
-		return nil, getErr
-	}
-
-	if result.Item == nil || len(result.Item) == 0 {
-		log.Info().Str("table", "media").Interface("key", dateArgs.Key).Msg("Item not in table")
-		return nil, errors.New("Item not found in table")
-	}
-
-	mediaStats := dynamo_types.UserMediaStat{}
-	if unmarshalErr := dynamodbattribute.UnmarshalMap(result.Item, &mediaStats); unmarshalErr != nil {
-		log.Error().Err(unmarshalErr).Str("table", "media").Interface("key", dateArgs.Key).Interface("item", result.Item).Msg("Could not unmarshal dynamodb item")
-		return nil, unmarshalErr
-	}
-	mediaStats.Key = dateArgs.Key
-
-	return &mediaStats, nil
+func HandleRequest(ctx context.Context, dateArgs models.UserMediaDateKey) (*models.UserMediaStat, error) {
+	return models.GetStatusUpdate(svc, dateArgs)
 }
 
 func main() {
