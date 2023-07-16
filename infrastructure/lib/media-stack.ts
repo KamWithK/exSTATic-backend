@@ -39,6 +39,9 @@ export class MediaStack extends Stack {
         const statusUpdatePutFunction = new GoFunction(this, 'statusUpdatePutFunction', {
             entry: FUNCTIONS_FOLDER + 'status_update/put'
         });
+        const statusUpdateDeleteFunction = new GoFunction(this, 'statusUpdateDeleteFunction', {
+            entry: FUNCTIONS_FOLDER + 'status_update/delete'
+        });
 
         props.mediaTable.grantReadWriteData(mediaInfoGetFunction);
         props.mediaTable.grantReadWriteData(mediaInfoPutFunction);
@@ -46,6 +49,7 @@ export class MediaStack extends Stack {
         props.mediaTable.grantReadWriteData(backfillPostFunction);
         props.mediaTable.grantReadWriteData(statusUpdateGetFunction);
         props.mediaTable.grantReadWriteData(statusUpdatePutFunction);
+        props.mediaTable.grantReadWriteData(statusUpdateDeleteFunction);
 
         props.leaderboardTable.grantReadWriteData(backfillPostFunction);
         props.leaderboardTable.grantReadWriteData(statusUpdatePutFunction);
@@ -64,6 +68,7 @@ export class MediaStack extends Stack {
         const backfillGetIntegration = new HttpLambdaIntegration('backfillGetIntegration', backfillGetFunction);
         const statusUpdateGetIntegration = new HttpLambdaIntegration('statusUpdateGetIntegration', statusUpdateGetFunction);
         const statusUpdatePutIntegration = new HttpLambdaIntegration('statusUpdatePutIntegration', statusUpdatePutFunction);
+        const statusUpdateDeleteIntegration = new HttpLambdaIntegration('statusUpdateDeleteIntegration', statusUpdateDeleteFunction);
 
         const backfillPostIntegration = new HttpStepFunctionsIntegration('backfillPostIntegration', {
             stateMachine: backfillPostStateMachine
@@ -99,6 +104,11 @@ export class MediaStack extends Stack {
             methods: [HttpMethod.PUT],
             integration: statusUpdatePutIntegration
         };
+        const statusUpdateDeleteRouteOptions: AddRoutesOptions = {
+            path: '/statusUpdate/delete',
+            methods: [HttpMethod.DELETE],
+            integration: statusUpdateDeleteIntegration
+        };
 
         this.routeOptions = [
             mediaInfoGetRouteOptions,
@@ -106,7 +116,8 @@ export class MediaStack extends Stack {
             backfillGetRouteOptions,
             backfillPostRouteOptions,
             statusUpdateGetRouteOptions,
-            statusUpdatePutRouteOptions
+            statusUpdatePutRouteOptions,
+            statusUpdateDeleteRouteOptions
         ];
     }
 }

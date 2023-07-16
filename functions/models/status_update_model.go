@@ -63,6 +63,24 @@ func GetStatusUpdate(svc *dynamodb.DynamoDB, dateArgs UserMediaDateKey) (*UserMe
 	return &mediaStats, nil
 }
 
+func DeleteStatusUpdate(svc *dynamodb.DynamoDB, dateArgs UserMediaDateKey) error {
+	tableKey, keyErr := utils.GetCompositeKey(dateArgs.Key.MediaType+"#"+dateArgs.Key.Username, utils.ZeroPadInt64(dateArgs.DateTime)+"#"+dateArgs.Key.MediaIdentifier)
+	if keyErr != nil {
+		return keyErr
+	}
+
+	_, deleteErr := svc.DeleteItem(&dynamodb.DeleteItemInput{
+		TableName: aws.String("media"),
+		Key:       tableKey,
+	})
+	if deleteErr != nil {
+		log.Error().Err(deleteErr).Str("table", "media").Interface("key", dateArgs.Key).Msg("Dynamodb failed to delete item")
+		return deleteErr
+	}
+
+	return nil
+}
+
 func getDay(svc *dynamodb.DynamoDB, targetDay int64, key UserMediaKey) (map[string]*dynamodb.AttributeValue, *UserMediaStat, error) {
 	// Get key which represents this media today
 	tableKey, keyErr := utils.GetCompositeKey(key.MediaType+"#"+key.Username, utils.ZeroPadInt64(targetDay)+"#"+key.MediaIdentifier)
