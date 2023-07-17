@@ -19,7 +19,7 @@ func init() {
 	svc = dynamodb.New(sess)
 }
 
-func HandleRequest(ctx context.Context, userMediaDateKey models.UserMediaDateKey) ([]models.UserMediaStat, error) {
+func HandleRequest(ctx context.Context, userMediaDateKey models.UserMediaDateKey) (*models.BackfillArgs, error) {
 	return models.GetBackfill(svc, userMediaDateKey)
 }
 

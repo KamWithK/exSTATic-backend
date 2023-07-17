@@ -2,6 +2,8 @@ package models
 
 import (
 	"errors"
+	"strconv"
+	"strings"
 
 	"github.com/KamWithK/exSTATic-backend/utils"
 	"github.com/aws/aws-sdk-go/aws"
@@ -16,7 +18,39 @@ type BackfillArgs struct {
 	MediaStats   []UserMediaStat  `json:"media_stats"`
 }
 
-func GetBackfill(svc *dynamodb.DynamoDB, UserMediaDateKey UserMediaDateKey) ([]UserMediaStat, error) {
+func SplitCompositeKey(pk string, sk string) (*UserMediaKey, *int64, error) {
+	pkSplit := strings.Split(pk, "#")
+	skSplit := strings.Split(sk, "#")
+
+	key := UserMediaKey{}
+	var recordDate *int64
+
+	if len(pkSplit) != 2 {
+		return nil, nil, errors.New("Invalid partition key (pk) split")
+	}
+
+	key.Username = pkSplit[1]
+	key.MediaType = pkSplit[0]
+
+	if len(skSplit) == 1 {
+		key.MediaIdentifier = skSplit[0]
+	} else if len(skSplit) == 2 {
+		key.MediaIdentifier = skSplit[1]
+		date, parseIntErr := strconv.ParseInt(skSplit[0], 10, 64)
+
+		if parseIntErr != nil {
+			return nil, nil, errors.New("Could not parse Unix epoch")
+		}
+
+		recordDate = &date
+	} else {
+		return nil, nil, errors.New("Invalid secondary key (sk) split")
+	}
+
+	return &key, recordDate, nil
+}
+
+func GetBackfill(svc *dynamodb.DynamoDB, UserMediaDateKey UserMediaDateKey) (*BackfillArgs, error) {
 	queryInput := &dynamodb.QueryInput{
 		TableName:              aws.String("media"),
 		KeyConditionExpression: aws.String("pk = :pk AND last_update >= :lastUpdate"),
@@ -37,14 +71,37 @@ func GetBackfill(svc *dynamodb.DynamoDB, UserMediaDateKey UserMediaDateKey) ([]U
 		return nil, queryErr
 	}
 
-	userMediaStats := []UserMediaStat{}
-	unmarshalErr := dynamodbattribute.UnmarshalListOfMaps(result.Items, &userMediaStats)
-	if unmarshalErr != nil {
-		log.Info().Err(unmarshalErr).Send()
-		return nil, unmarshalErr
+	mediaEntries := []UserMediaEntry{}
+	mediaStats := []UserMediaStat{}
+
+	for _, item := range result.Items {
+		pk, sk := item["pk"].String(), item["sk"].String()
+		key, date, splitErr := SplitCompositeKey(pk, sk)
+
+		if splitErr != nil {
+			log.Error().Err(splitErr).Str("pk", pk).Str("sk", sk).Interface("item", item).Msg("Could not split keys")
+		} else if date == nil {
+			mediaEntry := UserMediaEntry{}
+			unmarshalErr := dynamodbattribute.UnmarshalMap(item, &mediaEntry)
+			if unmarshalErr != nil {
+				log.Error().Interface("key", key).Interface("item", item).Err(unmarshalErr).Msg("Could not unmarshal item into UserMediaEntry")
+			}
+		} else if key != nil {
+			mediaStat := UserMediaStat{}
+			unmarshalErr := dynamodbattribute.UnmarshalMap(item, &mediaStat)
+			if unmarshalErr != nil {
+				log.Error().Interface("key", key).Interface("item", item).Err(unmarshalErr).Msg("Could not unmarshal item into UserMediaStat")
+			}
+		} else {
+			log.Error().Str("pk", pk).Str("sk", sk).Interface("item", item).Msg("Item neither entry nor stat")
+		}
 	}
 
-	return userMediaStats, nil
+	return &BackfillArgs{
+		Username:     UserMediaDateKey.Key.Username,
+		MediaEntries: mediaEntries,
+		MediaStats:   mediaStats,
+	}, nil
 }
 
 func PutBackfill(history BackfillArgs) (*utils.BatchwriteArgs, error) {
