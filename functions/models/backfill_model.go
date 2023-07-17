@@ -19,13 +19,20 @@ type BackfillArgs struct {
 }
 
 func SplitCompositeKey(pk string, sk string) (*UserMediaKey, *int64, error) {
+	if pk == "" {
+		return nil, nil, errors.New("Empty partition key (pk)")
+	}
+	if sk == "" {
+		return nil, nil, errors.New("Empty secondary key (sk)")
+	}
+
 	pkSplit := strings.Split(pk, "#")
 	skSplit := strings.Split(sk, "#")
 
 	key := UserMediaKey{}
 	var recordDate *int64
 
-	if len(pkSplit) != 2 {
+	if len(pkSplit) != 2 || pkSplit[0] == "" || pkSplit[1] == "" {
 		return nil, nil, errors.New("Invalid partition key (pk) split")
 	}
 
