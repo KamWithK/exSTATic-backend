@@ -82,7 +82,7 @@ func GetBackfill(svc *dynamodb.DynamoDB, UserMediaDateKey UserMediaDateKey) (*Ba
 	mediaStats := []UserMediaStat{}
 
 	for _, item := range result.Items {
-		pk, sk := item["pk"].String(), item["sk"].String()
+		pk, sk := *item["pk"].S, *item["sk"].S
 		key, date, splitErr := SplitCompositeKey(pk, sk)
 
 		if splitErr != nil {
@@ -90,14 +90,22 @@ func GetBackfill(svc *dynamodb.DynamoDB, UserMediaDateKey UserMediaDateKey) (*Ba
 		} else if date == nil {
 			mediaEntry := UserMediaEntry{}
 			unmarshalErr := dynamodbattribute.UnmarshalMap(item, &mediaEntry)
+			mediaEntry.Key = *key
+
 			if unmarshalErr != nil {
 				log.Error().Interface("key", key).Interface("item", item).Err(unmarshalErr).Msg("Could not unmarshal item into UserMediaEntry")
+			} else {
+				mediaEntries = append(mediaEntries, mediaEntry)
 			}
 		} else if key != nil {
 			mediaStat := UserMediaStat{}
 			unmarshalErr := dynamodbattribute.UnmarshalMap(item, &mediaStat)
+			mediaStat.Key = *key
+
 			if unmarshalErr != nil {
 				log.Error().Interface("key", key).Interface("item", item).Err(unmarshalErr).Msg("Could not unmarshal item into UserMediaStat")
+			} else {
+				mediaStats = append(mediaStats, mediaStat)
 			}
 		} else {
 			log.Error().Str("pk", pk).Str("sk", sk).Interface("item", item).Msg("Item neither entry nor stat")
