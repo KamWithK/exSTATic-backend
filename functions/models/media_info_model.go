@@ -17,8 +17,12 @@ type IntermediateEntryItem struct {
 	UserMediaEntry
 }
 
+func MediaInfoSK(key UserMediaKey) string {
+	return key.MediaIdentifier
+}
+
 func GetMediaInfo(svc *dynamodb.DynamoDB, key UserMediaKey) (*UserMediaEntry, error) {
-	tableKey, keyErr := utils.GetCompositeKey(key.MediaType+"#"+key.Username, key.MediaIdentifier)
+	tableKey, keyErr := utils.GetCompositeKey(UserMediaPK(key), MediaInfoSK(key))
 	if keyErr != nil {
 		return nil, keyErr
 	}
@@ -50,7 +54,7 @@ func GetMediaInfo(svc *dynamodb.DynamoDB, key UserMediaKey) (*UserMediaEntry, er
 func PutMediaInfo(svc *dynamodb.DynamoDB, userMediaEntry UserMediaEntry) error {
 	userMediaEntry.LastUpdate = time.Now().Unix()
 
-	tableKey, keyErr := utils.GetCompositeKey(userMediaEntry.Key.MediaType+"#"+userMediaEntry.Key.Username, userMediaEntry.Key.MediaIdentifier)
+	tableKey, keyErr := utils.GetCompositeKey(UserMediaPK(userMediaEntry.Key), MediaInfoSK(userMediaEntry.Key))
 	if keyErr != nil {
 		return keyErr
 	}

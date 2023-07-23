@@ -33,8 +33,16 @@ type IntermediateStatItem struct {
 var startOfTime = time.Unix(0, 0)
 var nightEnd, morningStart = 4, 6
 
+func StatusUpdateSK(dateKey UserMediaDateKey) string {
+	return utils.ZeroPadInt64(dateKey.DateTime) + "#" + dateKey.Key.MediaIdentifier
+}
+
+func CustomStatusUpdateSK(key UserMediaKey, date int64) string {
+	return utils.ZeroPadInt64(date) + "#" + key.MediaIdentifier
+}
+
 func GetStatusUpdate(svc *dynamodb.DynamoDB, dateArgs UserMediaDateKey) (*UserMediaStat, error) {
-	tableKey, keyErr := utils.GetCompositeKey(dateArgs.Key.MediaType+"#"+dateArgs.Key.Username, utils.ZeroPadInt64(dateArgs.DateTime)+"#"+dateArgs.Key.MediaIdentifier)
+	tableKey, keyErr := utils.GetCompositeKey(UserMediaPK(dateArgs.Key), StatusUpdateSK(dateArgs))
 	if keyErr != nil {
 		return nil, keyErr
 	}
@@ -64,7 +72,7 @@ func GetStatusUpdate(svc *dynamodb.DynamoDB, dateArgs UserMediaDateKey) (*UserMe
 }
 
 func DeleteStatusUpdate(svc *dynamodb.DynamoDB, dateArgs UserMediaDateKey) error {
-	tableKey, keyErr := utils.GetCompositeKey(dateArgs.Key.MediaType+"#"+dateArgs.Key.Username, utils.ZeroPadInt64(dateArgs.DateTime)+"#"+dateArgs.Key.MediaIdentifier)
+	tableKey, keyErr := utils.GetCompositeKey(UserMediaPK(dateArgs.Key), StatusUpdateSK(dateArgs))
 	if keyErr != nil {
 		return keyErr
 	}
@@ -74,7 +82,7 @@ func DeleteStatusUpdate(svc *dynamodb.DynamoDB, dateArgs UserMediaDateKey) error
 		Key:       tableKey,
 	})
 	if deleteErr != nil {
-		log.Error().Err(deleteErr).Str("table", "media").Interface("key", dateArgs.Key).Msg("Dynamodb failed to delete item")
+		log.Error().Err(deleteErr).Str("table", "media").Interface("key", dateArgs).Msg("Dynamodb failed to delete item")
 		return deleteErr
 	}
 
@@ -83,7 +91,7 @@ func DeleteStatusUpdate(svc *dynamodb.DynamoDB, dateArgs UserMediaDateKey) error
 
 func getDay(svc *dynamodb.DynamoDB, targetDay int64, key UserMediaKey) (map[string]*dynamodb.AttributeValue, *UserMediaStat, error) {
 	// Get key which represents this media today
-	tableKey, keyErr := utils.GetCompositeKey(key.MediaType+"#"+key.Username, utils.ZeroPadInt64(targetDay)+"#"+key.MediaIdentifier)
+	tableKey, keyErr := utils.GetCompositeKey(UserMediaPK(key), CustomStatusUpdateSK(key, targetDay))
 	if keyErr != nil {
 		return nil, nil, keyErr
 	}
