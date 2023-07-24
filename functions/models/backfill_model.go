@@ -46,7 +46,7 @@ func GetBackfill(svc *dynamodb.DynamoDB, UserMediaDateKey UserMediaDateKey) (*Ba
 
 		if splitErr != nil {
 			log.Error().Err(splitErr).Str("pk", pk).Str("sk", sk).Interface("item", item).Msg("Could not split keys")
-		} else if date == nil {
+		} else if key != nil && date == nil {
 			mediaEntry := UserMediaEntry{}
 			unmarshalErr := dynamodbattribute.UnmarshalMap(item, &mediaEntry)
 			mediaEntry.Key = *key
