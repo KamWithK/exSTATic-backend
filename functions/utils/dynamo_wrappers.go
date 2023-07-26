@@ -38,17 +38,16 @@ func GetCompositeKey(pk interface{}, sk interface{}) (map[string]*dynamodb.Attri
 	return tableKey, nil
 }
 
-func AddAttributeIfNotNull(updateExpression string, expressionAttributeNames map[string]*string, expressionAttributeValues map[string]*dynamodb.AttributeValue, attributeName, jsonAttributeName string, value interface{}) (string, map[string]*string, map[string]*dynamodb.AttributeValue) {
+func RemoveNullAttributes(updateExpression *string, expressionAttributeNames map[string]*string, expressionAttributeValues map[string]*dynamodb.AttributeValue, attributeName, jsonAttributeName string, value interface{}) {
 	if value != nil {
 		if len(expressionAttributeNames) > 0 {
-			updateExpression += ","
+			*updateExpression += ","
 		}
-		updateExpression += " #" + attributeName + " = :" + attributeName
+		*updateExpression += " #" + attributeName + " = :" + attributeName
 		expressionAttributeNames["#"+attributeName] = aws.String(jsonAttributeName)
 		value, _ := dynamodbattribute.Marshal(value)
 		expressionAttributeValues[":"+attributeName] = value
 	}
-	return updateExpression, expressionAttributeNames, expressionAttributeValues
 }
 
 func CreateUpdateExpressionAttributes(optionArgs interface{}) (string, map[string]*string, map[string]*dynamodb.AttributeValue) {
@@ -66,7 +65,7 @@ func CreateUpdateExpressionAttributes(optionArgs interface{}) (string, map[strin
 		if field.Kind() != reflect.Invalid && !field.IsZero() {
 			if fieldType.Name != "Key" {
 				jsonTag := strings.Split(fieldType.Tag.Get("json"), ",")[0]
-				updateExpression, expressionAttributeNames, expressionAttributeValues = AddAttributeIfNotNull(updateExpression, expressionAttributeNames, expressionAttributeValues, fieldType.Name, jsonTag, field.Interface())
+				RemoveNullAttributes(&updateExpression, expressionAttributeNames, expressionAttributeValues, fieldType.Name, jsonTag, field.Interface())
 			}
 		}
 	}
