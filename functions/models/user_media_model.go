@@ -86,7 +86,7 @@ func splitUserMediaSK(sk string, key *UserMediaKey, recordDate *int64) error {
 
 func SplitUserMediaCompositeKey(pk string, sk string) (*UserMediaKey, *int64, error) {
 	key := UserMediaKey{}
-	var recordDate *int64
+	recordDate := new(int64)
 
 	if pkErr := splitUserMediaPK(pk, &key); pkErr != nil {
 		return nil, nil, pkErr
