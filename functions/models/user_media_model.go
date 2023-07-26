@@ -59,7 +59,7 @@ func splitUserMediaPK(pk string, key *UserMediaKey) error {
 	return nil
 }
 
-func splitUserMediaSK(sk string, key *UserMediaKey, recordDate *int64) error {
+func splitUserMediaSK(sk string, key *UserMediaKey, recordDate **int64) error {
 	if sk == "" {
 		return errors.New("empty secondary key (sk)")
 	}
@@ -68,6 +68,7 @@ func splitUserMediaSK(sk string, key *UserMediaKey, recordDate *int64) error {
 
 	if len(skSplit) == 1 {
 		key.MediaIdentifier = skSplit[0]
+		*recordDate = nil
 	} else if len(skSplit) == 2 {
 		key.MediaIdentifier = skSplit[1]
 		date, parseIntErr := strconv.ParseInt(skSplit[0], 10, 64)
@@ -76,7 +77,7 @@ func splitUserMediaSK(sk string, key *UserMediaKey, recordDate *int64) error {
 			return errors.New("could not parse Unix epoch")
 		}
 
-		*recordDate = date
+		**recordDate = date
 	} else {
 		return errors.New("invalid secondary key (sk) split")
 	}
@@ -91,7 +92,7 @@ func SplitUserMediaCompositeKey(pk string, sk string) (*UserMediaKey, *int64, er
 	if pkErr := splitUserMediaPK(pk, &key); pkErr != nil {
 		return nil, nil, pkErr
 	}
-	if skErr := splitUserMediaSK(sk, &key, recordDate); skErr != nil {
+	if skErr := splitUserMediaSK(sk, &key, &recordDate); skErr != nil {
 		return nil, nil, skErr
 	}
 
