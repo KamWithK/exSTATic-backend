@@ -44,13 +44,13 @@ func UserMediaPK(key UserMediaKey) string {
 
 func splitUserMediaPK(pk string, key *UserMediaKey) error {
 	if pk == "" {
-		return errors.New("Empty partition key (pk)")
+		return errors.New("empty partition key (pk)")
 	}
 
 	pkSplit := strings.Split(pk, "#")
 
 	if len(pkSplit) != 2 || pkSplit[0] == "" || pkSplit[1] == "" {
-		return errors.New("Invalid partition key (pk) split")
+		return errors.New("invalid partition key (pk) split")
 	}
 
 	key.Username = pkSplit[1]
@@ -61,7 +61,7 @@ func splitUserMediaPK(pk string, key *UserMediaKey) error {
 
 func splitUserMediaSK(sk string, key *UserMediaKey, recordDate *int64) error {
 	if sk == "" {
-		return errors.New("Empty secondary key (sk)")
+		return errors.New("empty secondary key (sk)")
 	}
 
 	skSplit := strings.Split(sk, "#")
@@ -73,12 +73,12 @@ func splitUserMediaSK(sk string, key *UserMediaKey, recordDate *int64) error {
 		date, parseIntErr := strconv.ParseInt(skSplit[0], 10, 64)
 
 		if parseIntErr != nil {
-			return errors.New("Could not parse Unix epoch")
+			return errors.New("could not parse Unix epoch")
 		}
 
 		recordDate = &date
 	} else {
-		return errors.New("Invalid secondary key (sk) split")
+		return errors.New("invalid secondary key (sk) split")
 	}
 
 	return nil

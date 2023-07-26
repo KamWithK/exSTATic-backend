@@ -43,7 +43,7 @@ func GetUserSettings(svc *dynamodb.DynamoDB, key UserSettingsKey) (*UserSettings
 
 	if result.Item == nil || len(result.Item) == 0 {
 		log.Info().Str("table", "settings").Interface("key", key).Msg("Item not in table")
-		return nil, errors.New("Item not found in table")
+		return nil, errors.New("item not found in table")
 	}
 
 	optionArgs := UserSettings{}

@@ -57,7 +57,7 @@ func GetStatusUpdate(svc *dynamodb.DynamoDB, dateArgs UserMediaDateKey) (*UserMe
 
 	if result.Item == nil || len(result.Item) == 0 {
 		log.Info().Str("table", "media").Interface("key", dateArgs.Key).Msg("Item not in table")
-		return nil, errors.New("Item not found in table")
+		return nil, errors.New("item not found in table")
 	}
 
 	mediaStats := UserMediaStat{}
@@ -137,7 +137,7 @@ func DayRollback(timeNow time.Time, yesterdayLastUpdate *time.Time) (*time.Time,
 	// Whether to roll back is dependent on the previous days immersion
 	// Today will be returned as a reasonable fallback
 	if yesterdayLastUpdate == nil {
-		return &today, errors.New("Not enough information, need yesterday")
+		return &today, errors.New("not enough information, need yesterday")
 	}
 
 	// Continuous immersion with under an hour break constitutes a continuation of yesterday
@@ -216,7 +216,7 @@ func PutStatusUpdate(svc *dynamodb.DynamoDB, statusArgs StatusArgs) error {
 
 	// Anti-cheat measure
 	if timeNow.Sub(givenTime) > 24*time.Hour {
-		err := errors.New("First given time is more than 24 hours in the past")
+		err := errors.New("first given time is more than 24 hours in the past")
 		log.Info().Err(err).Send()
 	}
 

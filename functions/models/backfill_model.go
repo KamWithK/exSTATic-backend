@@ -82,7 +82,7 @@ func PutBackfill(history BackfillArgs) (*utils.BatchwriteArgs, error) {
 	username := history.Username
 
 	if len(username) == 0 {
-		err := errors.New("Invalid username")
+		err := errors.New("invalid username")
 		log.Info().Err(err).Send()
 
 		return nil, err
@@ -93,7 +93,7 @@ func PutBackfill(history BackfillArgs) (*utils.BatchwriteArgs, error) {
 	for _, userMedia := range history.MediaEntries {
 		writeRequest := utils.PutRawRequest(UserMediaPK(userMedia.Key), MediaInfoSK(userMedia.Key), &userMedia)
 		if userMedia.Key.Username != username {
-			err := errors.New("Username mismatch")
+			err := errors.New("username mismatch")
 			log.Info().Err(err).Send()
 		} else if writeRequest != nil {
 			writeRequests = append(writeRequests, writeRequest)
@@ -103,7 +103,7 @@ func PutBackfill(history BackfillArgs) (*utils.BatchwriteArgs, error) {
 	for _, userMedia := range history.MediaStats {
 		writeRequest := utils.PutRawRequest(UserMediaPK(userMedia.Key), CustomStatusUpdateSK(userMedia.Key, *userMedia.Date), &userMedia)
 		if userMedia.Key.Username != username {
-			err := errors.New("Username mismatch")
+			err := errors.New("username mismatch")
 			log.Info().Err(err).Send()
 		} else if writeRequest != nil {
 			writeRequests = append(writeRequests, writeRequest)
@@ -111,7 +111,7 @@ func PutBackfill(history BackfillArgs) (*utils.BatchwriteArgs, error) {
 	}
 
 	if len(writeRequests) == 0 {
-		err := errors.New("Error no valid data")
+		err := errors.New("error no valid data")
 		log.Info().Err(err).Send()
 
 		return nil, err

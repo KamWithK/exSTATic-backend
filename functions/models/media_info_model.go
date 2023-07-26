@@ -38,7 +38,7 @@ func GetMediaInfo(svc *dynamodb.DynamoDB, key UserMediaKey) (*UserMediaEntry, er
 
 	if result.Item == nil {
 		log.Info().Str("table", "media").Interface("key", key).Msg("Item not in table")
-		return nil, errors.New("Item not found in table")
+		return nil, errors.New("item not found in table")
 	}
 
 	userMediaEntryArgs := UserMediaEntry{}
