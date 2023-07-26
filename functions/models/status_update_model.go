@@ -30,7 +30,6 @@ type IntermediateStatItem struct {
 	UserMediaStat
 }
 
-var startOfTime = time.Unix(0, 0)
 var nightEnd, morningStart = 4, 6
 
 func StatusUpdateSK(dateKey UserMediaDateKey) string {
@@ -118,6 +117,38 @@ func getDay(svc *dynamodb.DynamoDB, targetDay int64, key UserMediaKey) (map[stri
 	return tableKey, &currentStats, nil
 }
 
+func DayRollback(timeNow time.Time, yesterdayLastUpdate *time.Time) (*time.Time, error) {
+	// Time markers
+	morningMarker := time.Date(timeNow.Year(), timeNow.Month(), timeNow.Day(), morningStart, 0, 0, 0, timeNow.Location())
+	eveningMarker := time.Date(timeNow.Year(), timeNow.Month(), timeNow.Day(), nightEnd, 0, 0, 0, timeNow.Location())
+	yesterday := time.Date(timeNow.Year(), timeNow.Month(), timeNow.Day()-1, 0, 0, 0, 0, time.UTC)
+	today := time.Date(timeNow.Year(), timeNow.Month(), timeNow.Day(), 0, 0, 0, 0, time.UTC)
+
+	// Anything before the evening marker is definitely yesterday
+	if timeNow.Before(eveningMarker) {
+		return &yesterday, nil
+	}
+
+	// Anything after the morning marker is definitely today
+	if timeNow.After(morningMarker) {
+		return &today, nil
+	}
+
+	// Whether to roll back is dependent on the previous days immersion
+	// Today will be returned as a reasonable fallback
+	if yesterdayLastUpdate == nil {
+		return &today, errors.New("Not enough information, need yesterday")
+	}
+
+	// Continuous immersion with under an hour break constitutes a continuation of yesterday
+	if timeNow.UTC().Before(yesterdayLastUpdate.Add(time.Hour)) {
+		return &yesterday, nil
+	}
+
+	// Default to immersing today when other cases all fail
+	return &today, nil
+}
+
 func whichDay(svc *dynamodb.DynamoDB, dateTime int64, timezone string, key UserMediaKey) (map[string]*dynamodb.AttributeValue, *UserMediaStat, error) {
 	// Given time
 	timeNow := time.Unix(dateTime, 0)
@@ -125,41 +156,33 @@ func whichDay(svc *dynamodb.DynamoDB, dateTime int64, timezone string, key UserM
 	// Location information
 	location, locationErr := time.LoadLocation(timezone)
 	if locationErr != nil {
-		log.Debug().Err(locationErr).Str("timezone", timezone).Send()
+		log.Debug().Err(locationErr).Str("timezone", timezone).Msg("Invalid timezone specified")
 		return nil, nil, locationErr
 	}
 	localTime := timeNow.In(location)
 
-	// Time markers
-	morningMarker := time.Date(localTime.Year(), localTime.Month(), localTime.Day(), morningStart, 0, 0, 0, location)
-	eveningMarker := time.Date(localTime.Year(), localTime.Month(), localTime.Day(), nightEnd, 0, 0, 0, location)
-	yesterday := time.Date(localTime.Year(), localTime.Month(), localTime.Day()-1, 0, 0, 0, 0, time.UTC)
-	today := time.Date(localTime.Year(), localTime.Month(), localTime.Day(), 0, 0, 0, 0, time.UTC)
+	// An error indicates a request for more data
+	whichDate, timeErr := DayRollback(localTime, nil)
+	if timeErr != nil {
+		// Use the returned fallback/reference date of today to get yesterday
+		yesterday := whichDate.AddDate(0, 0, -1)
 
-	// Anything before the evening marker is definitely yesterday
-	if localTime.Before(eveningMarker) {
-		return getDay(svc, yesterday.Unix(), key)
+		// Get yesterdays stats
+		yesterdayTableKey, userMediaStats, getDayErr := getDay(svc, yesterday.Unix(), key)
+		if getDayErr != nil {
+			return nil, nil, getDayErr
+		}
+
+		yesterdayLastUpdate := time.Unix(userMediaStats.LastUpdate, 0)
+		whichDate, _ = DayRollback(localTime, &yesterdayLastUpdate)
+
+		// Avoid extra database retrieval when it's already fetched
+		if whichDate.Equal(yesterday) {
+			return yesterdayTableKey, userMediaStats, nil
+		}
 	}
 
-	// Anything after the morning marker is definitely today
-	if localTime.After(morningMarker) {
-		return getDay(svc, today.Unix(), key)
-	}
-
-	// Get yesterdays stats
-	yesterdayTableKey, userMediaStats, getDayErr := getDay(svc, yesterday.Unix(), key)
-	if getDayErr != nil {
-		return nil, nil, getDayErr
-	}
-
-	// Continuous immersion with under an hour break constitutes a continuation of yesterday
-	// Otherwise immersion occurs today
-	yesterdayLastUpdate := time.Unix(userMediaStats.LastUpdate, 0)
-	if timeNow.Before(yesterdayLastUpdate.Add(1 * time.Hour)) {
-		return yesterdayTableKey, userMediaStats, nil
-	} else {
-		return getDay(svc, today.Unix(), key)
-	}
+	return getDay(svc, whichDate.Unix(), key)
 }
 
 func processProgress(statusArgs *StatusArgs, previousSats *UserMediaStat, morningStars int) {
