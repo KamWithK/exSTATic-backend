@@ -16,16 +16,16 @@ type BackfillArgs struct {
 	MediaStats   []UserMediaStat  `json:"media_stats"`
 }
 
-func GetBackfill(svc *dynamodb.DynamoDB, UserMediaDateKey UserMediaDateKey) (*BackfillArgs, error) {
+func GetBackfill(svc *dynamodb.DynamoDB, userMediaDateKey UserMediaDateKey) (*BackfillArgs, error) {
 	queryInput := &dynamodb.QueryInput{
 		TableName:              aws.String("media"),
 		KeyConditionExpression: aws.String("pk = :pk AND last_update >= :lastUpdate"),
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":pk": {
-				S: aws.String(UserMediaPK(UserMediaDateKey.Key)),
+				S: aws.String(UserMediaPK(userMediaDateKey.Key)),
 			},
 			":lastUpdate": {
-				N: aws.String(utils.ZeroPadInt64(UserMediaDateKey.DateTime)),
+				N: aws.String(utils.ZeroPadInt64(userMediaDateKey.DateTime)),
 			},
 		},
 		IndexName: aws.String("lastUpdatedIndex"),
@@ -72,7 +72,7 @@ func GetBackfill(svc *dynamodb.DynamoDB, UserMediaDateKey UserMediaDateKey) (*Ba
 	}
 
 	return &BackfillArgs{
-		Username:     UserMediaDateKey.Key.Username,
+		Username:     userMediaDateKey.Key.Username,
 		MediaEntries: mediaEntries,
 		MediaStats:   mediaStats,
 	}, nil
