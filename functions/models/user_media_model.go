@@ -76,7 +76,7 @@ func splitUserMediaSK(sk string, key *UserMediaKey, recordDate *int64) error {
 			return errors.New("could not parse Unix epoch")
 		}
 
-		recordDate = &date
+		*recordDate = date
 	} else {
 		return errors.New("invalid secondary key (sk) split")
 	}
