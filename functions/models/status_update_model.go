@@ -185,7 +185,7 @@ func whichDay(svc *dynamodb.DynamoDB, dateTime int64, timezone string, key UserM
 	return getDay(svc, whichDate.Unix(), key)
 }
 
-func processProgress(statusArgs *StatusArgs, previousSats *UserMediaStat, morningStars int) {
+func processProgress(statusArgs *StatusArgs, previousSats *UserMediaStat) {
 	// Set stats reference
 	stats := &previousSats.Stats
 	lastTime := time.Unix(previousSats.LastUpdate, 0)
@@ -227,7 +227,7 @@ func PutStatusUpdate(svc *dynamodb.DynamoDB, statusArgs StatusArgs) error {
 	}
 
 	// Process time data
-	processProgress(&statusArgs, userMediaStats, 4)
+	processProgress(&statusArgs, userMediaStats)
 
 	// Put item
 	_, updateErr := utils.UpdateItem(svc, "media", tableKey, userMediaStats)
