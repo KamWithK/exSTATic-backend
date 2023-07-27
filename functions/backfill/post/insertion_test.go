@@ -11,7 +11,7 @@ import (
 )
 
 func TestNull(t *testing.T) {
-	result, err := HandleRequest(nil, models.BackfillArgs{})
+	result, err := models.PutBackfill(models.BackfillArgs{})
 
 	assert.Nil(t, result, "No input => no writes")
 	assert.Error(t, err)
@@ -20,7 +20,7 @@ func TestNull(t *testing.T) {
 func TestNoUsername(t *testing.T) {
 	fake := faker.New()
 
-	result, err := HandleRequest(nil, models.BackfillArgs{
+	result, err := models.PutBackfill(models.BackfillArgs{
 		Username:     "",
 		MediaEntries: models.RandomMediaEntries(fake, "", 3),
 	})
@@ -36,7 +36,7 @@ func TestMultipleUsernames(t *testing.T) {
 
 	invalidEntries, validEntries := 5, 3
 
-	results, err := HandleRequest(nil, models.BackfillArgs{
+	results, err := models.PutBackfill(models.BackfillArgs{
 		Username:     user1,
 		MediaEntries: append(models.RandomMediaEntries(fake, user2, invalidEntries), models.RandomMediaEntries(fake, user1, validEntries)...),
 	})
@@ -51,7 +51,7 @@ func TestWriteMediaEntries(t *testing.T) {
 
 	inputMediaEntries, producedMediaEntries := models.RandomMediaEntries(fake, user, 100), []models.UserMediaEntry{}
 
-	results, err := HandleRequest(nil, models.BackfillArgs{
+	results, err := models.PutBackfill(models.BackfillArgs{
 		Username:     user,
 		MediaEntries: inputMediaEntries,
 	})
@@ -90,7 +90,7 @@ func TestWriteMediaStats(t *testing.T) {
 		inputMediaStats = append(inputMediaStats, models.RandomMediaStats(fake, mediaEntry.Key, 30, 0.8)...)
 	}
 
-	results, err := HandleRequest(nil, models.BackfillArgs{
+	results, err := models.PutBackfill(models.BackfillArgs{
 		Username:   user,
 		MediaStats: inputMediaStats,
 	})
