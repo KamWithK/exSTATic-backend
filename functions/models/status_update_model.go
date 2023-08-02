@@ -154,32 +154,6 @@ func DayRollback(timeNow time.Time, yesterdayLastUpdate *time.Time) (time.Time, 
 	return today, nil
 }
 
-func whichDay(svc *dynamodb.DynamoDB, localTime time.Time, key UserMediaKey) (map[string]*dynamodb.AttributeValue, *UserMediaStat, error) {
-	// An error indicates a request for more data
-	whichDate, timeErr := DayRollback(localTime, nil)
-	if timeErr != nil {
-		// Use the returned fallback/reference date of today to fetch yesterday
-		yesterday := whichDate.AddDate(0, 0, -1)
-		yesterdayTableKey, userMediaStats, getDayErr := getDay(svc, yesterday.Unix(), key)
-
-		// If yesterday did exist then adjust based on it
-		// Otherwise the default (today) will be maintained
-		if getDayErr == nil {
-			yesterdayLastUpdate := time.Unix(userMediaStats.LastUpdate, 0)
-			whichDate, _ = DayRollback(localTime, &yesterdayLastUpdate)
-		} else if !errors.Is(getDayErr, utils.ErrEmptyItems) {
-			return nil, nil, getDayErr
-		}
-
-		// Avoid extra database retrieval when it's already fetched
-		if whichDate.Equal(yesterday) {
-			return yesterdayTableKey, userMediaStats, nil
-		}
-	}
-
-	return getDay(svc, whichDate.Unix(), key)
-}
-
 func processProgress(previousSats *UserMediaStat, additiveStats MediaStat, progressPoints ProgressPoints, maxAFKTime int16) {
 	// Set stats reference
 	stats := &previousSats.Stats
@@ -224,8 +198,19 @@ func PutStatusUpdate(svc *dynamodb.DynamoDB, statusArgs StatusArgs, maxAFKTime i
 	}
 	localTime := givenTime.In(location)
 
+	// Get user state
+	userStateKey := UserMediaStateKey{Username: statusArgs.Key.Username}
+	userState, getStateErr := GetUserMediaState(svc, userStateKey)
+	if getStateErr != nil {
+		return getStateErr
+	}
+
 	// Find day
-	tableKey, userMediaStats, findDayErr := whichDay(svc, localTime, statusArgs.Key)
+	day, getDayErr := DayRollback(localTime, aws.Time(time.Unix(userState.LastUpdate, 0)))
+	if getDayErr != nil {
+		return getDayErr
+	}
+	tableKey, userMediaStats, findDayErr := getDay(svc, day.Unix(), statusArgs.Key)
 	if findDayErr != nil && !errors.Is(findDayErr, utils.ErrEmptyItems) {
 		return findDayErr
 	}
@@ -233,10 +218,19 @@ func PutStatusUpdate(svc *dynamodb.DynamoDB, statusArgs StatusArgs, maxAFKTime i
 	// Process time data
 	processProgress(userMediaStats, statusArgs.Stats, statusArgs.Progress, maxAFKTime)
 
-	// Put item
-	_, updateErr := utils.UpdateItem(svc, "media", tableKey, userMediaStats)
-	if updateErr != nil {
-		return updateErr
+	// Update user state
+	_, statusUpdateErr := utils.UpdateItem(svc, "media", tableKey, UserMediaState{
+		Key:        userStateKey,
+		LastUpdate: userMediaStats.LastUpdate,
+	})
+	if statusUpdateErr != nil {
+		return statusUpdateErr
+	}
+
+	// Update user media stats
+	_, statsUpdateErr := utils.UpdateItem(svc, "media", tableKey, userMediaStats)
+	if statsUpdateErr != nil {
+		return statsUpdateErr
 	}
 
 	return nil
