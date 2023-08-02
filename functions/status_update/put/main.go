@@ -20,7 +20,7 @@ func init() {
 }
 
 func HandleRequest(ctx context.Context, statusArgs models.StatusArgs) error {
-	return models.PutStatusUpdate(svc, statusArgs)
+	return models.PutStatusUpdate(svc, statusArgs, 120)
 }
 
 func main() {
