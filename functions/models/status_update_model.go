@@ -30,7 +30,8 @@ type IntermediateStatItem struct {
 	UserMediaStat
 }
 
-var nightEnd, morningStart = 4, 6
+const nightEnd, morningStart = 4, 6
+const intermittentPeriod = 4
 
 func StatusUpdateSK(dateKey UserMediaDateKey) string {
 	return utils.ZeroPadInt64(dateKey.DateTime) + "#" + dateKey.Key.MediaIdentifier
@@ -145,7 +146,7 @@ func DayRollback(timeNow time.Time, yesterdayLastUpdate *time.Time) (time.Time, 
 	}
 
 	// Continuous immersion with under an hour break constitutes a continuation of yesterday
-	if timeNow.UTC().Before(yesterdayLastUpdate.Add(time.Hour)) {
+	if timeNow.UTC().Before(yesterdayLastUpdate.Add(intermittentPeriod * time.Hour)) {
 		return yesterday, nil
 	}
 
