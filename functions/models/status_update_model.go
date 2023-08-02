@@ -15,13 +15,13 @@ type ProgressStatus struct {
 	DateTime int64 `json:"datetime" binding:"required"`
 	Pause    bool  `json:"status_change"`
 }
+type ProgressPoints []ProgressStatus
 
 type StatusArgs struct {
-	Key        UserMediaKey     `json:"key" binding:"required"`
-	Stats      MediaStat        `json:"stats" binding:"required"`
-	Progress   []ProgressStatus `json:"progress" binding:"required"`
-	Timezone   string           `json:"timezone" binding:"required"`
-	MaxAFKTime int16            `json:"max_afk_time"`
+	Key      UserMediaKey   `json:"key" binding:"required"`
+	Stats    MediaStat      `json:"stats" binding:"required"`
+	Progress ProgressPoints `json:"progress" binding:"required"`
+	Timezone string         `json:"timezone" binding:"required"`
 }
 
 type IntermediateStatItem struct {
@@ -101,7 +101,7 @@ func getDay(svc *dynamodb.DynamoDB, targetDay int64, key UserMediaKey) (map[stri
 		Key:       tableKey,
 	})
 	if getErr != nil {
-		log.Info().Str("table", "media").Interface("key", key).Msg("Item not in table")
+		log.Info().Str("table", "media").Interface("key", key).Msg("Attempt to get items errored")
 		return nil, nil, getErr
 	}
 
@@ -114,10 +114,14 @@ func getDay(svc *dynamodb.DynamoDB, targetDay int64, key UserMediaKey) (map[stri
 	currentStats.Key = key
 	currentStats.Date = &targetDay
 
+	if result.Item == nil {
+		return tableKey, &currentStats, utils.ErrEmptyItems
+	}
+
 	return tableKey, &currentStats, nil
 }
 
-func DayRollback(timeNow time.Time, yesterdayLastUpdate *time.Time) (*time.Time, error) {
+func DayRollback(timeNow time.Time, yesterdayLastUpdate *time.Time) (time.Time, error) {
 	// Time markers
 	morningMarker := time.Date(timeNow.Year(), timeNow.Month(), timeNow.Day(), morningStart, 0, 0, 0, timeNow.Location())
 	eveningMarker := time.Date(timeNow.Year(), timeNow.Month(), timeNow.Day(), nightEnd, 0, 0, 0, timeNow.Location())
@@ -126,55 +130,45 @@ func DayRollback(timeNow time.Time, yesterdayLastUpdate *time.Time) (*time.Time,
 
 	// Anything before the evening marker is definitely yesterday
 	if timeNow.Before(eveningMarker) {
-		return &yesterday, nil
+		return yesterday, nil
 	}
 
 	// Anything after the morning marker is definitely today
 	if timeNow.After(morningMarker) {
-		return &today, nil
+		return today, nil
 	}
 
 	// Whether to roll back is dependent on the previous days immersion
 	// Today will be returned as a reasonable fallback
 	if yesterdayLastUpdate == nil {
-		return &today, errors.New("not enough information, need yesterday")
+		return today, errors.New("not enough information, need yesterday")
 	}
 
 	// Continuous immersion with under an hour break constitutes a continuation of yesterday
 	if timeNow.UTC().Before(yesterdayLastUpdate.Add(time.Hour)) {
-		return &yesterday, nil
+		return yesterday, nil
 	}
 
 	// Default to immersing today when other cases all fail
-	return &today, nil
+	return today, nil
 }
 
-func whichDay(svc *dynamodb.DynamoDB, dateTime int64, timezone string, key UserMediaKey) (map[string]*dynamodb.AttributeValue, *UserMediaStat, error) {
-	// Given time
-	timeNow := time.Unix(dateTime, 0)
-
-	// Location information
-	location, locationErr := time.LoadLocation(timezone)
-	if locationErr != nil {
-		log.Debug().Err(locationErr).Str("timezone", timezone).Msg("Invalid timezone specified")
-		return nil, nil, locationErr
-	}
-	localTime := timeNow.In(location)
-
+func whichDay(svc *dynamodb.DynamoDB, localTime time.Time, key UserMediaKey) (map[string]*dynamodb.AttributeValue, *UserMediaStat, error) {
 	// An error indicates a request for more data
 	whichDate, timeErr := DayRollback(localTime, nil)
 	if timeErr != nil {
-		// Use the returned fallback/reference date of today to get yesterday
+		// Use the returned fallback/reference date of today to fetch yesterday
 		yesterday := whichDate.AddDate(0, 0, -1)
-
-		// Get yesterdays stats
 		yesterdayTableKey, userMediaStats, getDayErr := getDay(svc, yesterday.Unix(), key)
-		if getDayErr != nil {
+
+		// If yesterday did exist then adjust based on it
+		// Otherwise the default (today) will be maintained
+		if getDayErr == nil {
+			yesterdayLastUpdate := time.Unix(userMediaStats.LastUpdate, 0)
+			whichDate, _ = DayRollback(localTime, &yesterdayLastUpdate)
+		} else if !errors.Is(getDayErr, utils.ErrEmptyItems) {
 			return nil, nil, getDayErr
 		}
-
-		yesterdayLastUpdate := time.Unix(userMediaStats.LastUpdate, 0)
-		whichDate, _ = DayRollback(localTime, &yesterdayLastUpdate)
 
 		// Avoid extra database retrieval when it's already fetched
 		if whichDate.Equal(yesterday) {
@@ -185,21 +179,21 @@ func whichDay(svc *dynamodb.DynamoDB, dateTime int64, timezone string, key UserM
 	return getDay(svc, whichDate.Unix(), key)
 }
 
-func processProgress(statusArgs *StatusArgs, previousSats *UserMediaStat) {
+func processProgress(previousSats *UserMediaStat, additiveStats MediaStat, progressPoints ProgressPoints, maxAFKTime int16) {
 	// Set stats reference
 	stats := &previousSats.Stats
 	lastTime := time.Unix(previousSats.LastUpdate, 0)
 
-	previousSats.Stats.CharsRead += stats.CharsRead
-	previousSats.Stats.LinesRead += stats.LinesRead
+	stats.CharsRead += additiveStats.CharsRead
+	stats.LinesRead += additiveStats.LinesRead
 
 	// Consolidate the batch of read times together
-	for _, progress := range statusArgs.Progress {
+	for _, progress := range progressPoints {
 		progressTime := time.Unix(progress.DateTime, 0)
 		timeDifference := progressTime.Sub(lastTime)
 
 		// Update time read whilst reading and when times are strictly increasing
-		if !previousSats.Pause && timeDifference > 0 && timeDifference < time.Duration(statusArgs.MaxAFKTime)*time.Second {
+		if !previousSats.Pause && timeDifference > 0 && timeDifference < time.Duration(maxAFKTime)*time.Second {
 			stats.TimeRead += int64(timeDifference.Seconds())
 		}
 
@@ -210,7 +204,8 @@ func processProgress(statusArgs *StatusArgs, previousSats *UserMediaStat) {
 	}
 }
 
-func PutStatusUpdate(svc *dynamodb.DynamoDB, statusArgs StatusArgs) error {
+func PutStatusUpdate(svc *dynamodb.DynamoDB, statusArgs StatusArgs, maxAFKTime int16) error {
+	// Load times
 	timeNow := time.Now()
 	givenTime := time.Unix(statusArgs.Progress[0].DateTime, 0)
 
@@ -220,14 +215,22 @@ func PutStatusUpdate(svc *dynamodb.DynamoDB, statusArgs StatusArgs) error {
 		log.Info().Err(err).Send()
 	}
 
+	// Location information
+	location, locationErr := time.LoadLocation(statusArgs.Timezone)
+	if locationErr != nil {
+		log.Debug().Err(locationErr).Str("timezone", statusArgs.Timezone).Msg("Invalid timezone specified")
+		return locationErr
+	}
+	localTime := givenTime.In(location)
+
 	// Find day
-	tableKey, userMediaStats, findDayErr := whichDay(svc, givenTime.Unix(), statusArgs.Timezone, statusArgs.Key)
-	if findDayErr != nil {
+	tableKey, userMediaStats, findDayErr := whichDay(svc, localTime, statusArgs.Key)
+	if findDayErr != nil && !errors.Is(findDayErr, utils.ErrEmptyItems) {
 		return findDayErr
 	}
 
 	// Process time data
-	processProgress(&statusArgs, userMediaStats)
+	processProgress(userMediaStats, statusArgs.Stats, statusArgs.Progress, maxAFKTime)
 
 	// Put item
 	_, updateErr := utils.UpdateItem(svc, "media", tableKey, userMediaStats)
