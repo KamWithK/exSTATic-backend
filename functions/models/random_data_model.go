@@ -35,7 +35,7 @@ func RandomMediaEntries(fake faker.Faker, user string, numEntries int) []UserMed
 
 // Create a random stats entry for some number of days in the past
 func RandomMediaStats(fake faker.Faker, key UserMediaKey, daysAgo int, probability float32) []UserMediaStat {
-	now := time.Now()
+	now := time.Now().UTC()
 	startDate := now.AddDate(0, 0, -1*daysAgo)
 
 	var stats []UserMediaStat

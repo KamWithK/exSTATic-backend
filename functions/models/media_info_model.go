@@ -52,7 +52,7 @@ func GetMediaInfo(svc *dynamodb.DynamoDB, key UserMediaKey) (*UserMediaEntry, er
 }
 
 func PutMediaInfo(svc *dynamodb.DynamoDB, userMediaEntry UserMediaEntry) error {
-	userMediaEntry.LastUpdate = time.Now().Unix()
+	userMediaEntry.LastUpdate = time.Now().UTC().Unix()
 
 	tableKey, keyErr := utils.GetCompositeKey(UserMediaPK(userMediaEntry.Key), MediaInfoSK(userMediaEntry.Key))
 	if keyErr != nil {
