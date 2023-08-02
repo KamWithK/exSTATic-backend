@@ -30,9 +30,6 @@ type IntermediateStatItem struct {
 	UserMediaStat
 }
 
-const nightEnd, morningStart = 4, 6
-const intermittentPeriod = 4
-
 func StatusUpdateSK(dateKey UserMediaDateKey) string {
 	return utils.ZeroPadInt64(dateKey.DateTime) + "#" + dateKey.Key.MediaIdentifier
 }
@@ -122,62 +119,18 @@ func getDay(svc *dynamodb.DynamoDB, targetDay int64, key UserMediaKey) (map[stri
 	return tableKey, &currentStats, nil
 }
 
-func DayRollback(timeNow time.Time, yesterdayLastUpdate *time.Time) (time.Time, error) {
+func DayRollback(timeNow time.Time) time.Time {
 	// Time markers
-	morningMarker := time.Date(timeNow.Year(), timeNow.Month(), timeNow.Day(), morningStart, 0, 0, 0, timeNow.Location())
-	eveningMarker := time.Date(timeNow.Year(), timeNow.Month(), timeNow.Day(), nightEnd, 0, 0, 0, timeNow.Location())
 	yesterday := time.Date(timeNow.Year(), timeNow.Month(), timeNow.Day()-1, 0, 0, 0, 0, time.UTC)
 	today := time.Date(timeNow.Year(), timeNow.Month(), timeNow.Day(), 0, 0, 0, 0, time.UTC)
 
 	// Anything before the evening marker is definitely yesterday
-	if timeNow.Before(eveningMarker) {
-		return yesterday, nil
-	}
-
-	// Anything after the morning marker is definitely today
-	if timeNow.After(morningMarker) {
-		return today, nil
-	}
-
-	// Whether to roll back is dependent on the previous days immersion
-	// Today will be returned as a reasonable fallback
-	if yesterdayLastUpdate == nil {
-		return today, errors.New("not enough information, need yesterday")
-	}
-
-	// Continuous immersion with under an hour break constitutes a continuation of yesterday
-	if timeNow.UTC().Before(yesterdayLastUpdate.Add(intermittentPeriod * time.Hour)) {
-		return yesterday, nil
+	if timeNow.Before(today) {
+		return yesterday
 	}
 
 	// Default to immersing today when other cases all fail
-	return today, nil
-}
-
-func whichDay(svc *dynamodb.DynamoDB, localTime time.Time, key UserMediaKey) (map[string]*dynamodb.AttributeValue, *UserMediaStat, error) {
-	// An error indicates a request for more data
-	whichDate, timeErr := DayRollback(localTime, nil)
-	if timeErr != nil {
-		// Use the returned fallback/reference date of today to fetch yesterday
-		yesterday := whichDate.AddDate(0, 0, -1)
-		yesterdayTableKey, userMediaStats, getDayErr := getDay(svc, yesterday.Unix(), key)
-
-		// If yesterday did exist then adjust based on it
-		// Otherwise the default (today) will be maintained
-		if getDayErr == nil {
-			yesterdayLastUpdate := time.Unix(userMediaStats.LastUpdate, 0)
-			whichDate, _ = DayRollback(localTime, &yesterdayLastUpdate)
-		} else if !errors.Is(getDayErr, utils.ErrEmptyItems) {
-			return nil, nil, getDayErr
-		}
-
-		// Avoid extra database retrieval when it's already fetched
-		if whichDate.Equal(yesterday) {
-			return yesterdayTableKey, userMediaStats, nil
-		}
-	}
-
-	return getDay(svc, whichDate.Unix(), key)
+	return today
 }
 
 func processProgress(previousSats *UserMediaStat, additiveStats MediaStat, progressPoints ProgressPoints, maxAFKTime int16) {
@@ -225,7 +178,7 @@ func PutStatusUpdate(svc *dynamodb.DynamoDB, statusArgs StatusArgs, maxAFKTime i
 	localTime := givenTime.In(location)
 
 	// Find day
-	tableKey, userMediaStats, findDayErr := whichDay(svc, localTime, statusArgs.Key)
+	tableKey, userMediaStats, findDayErr := getDay(svc, DayRollback(localTime).Unix(), statusArgs.Key)
 	if findDayErr != nil && !errors.Is(findDayErr, utils.ErrEmptyItems) {
 		return findDayErr
 	}
