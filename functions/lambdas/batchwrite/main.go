@@ -31,7 +31,7 @@ func HandleRequest(ctx context.Context, args *dynamo_wrapper.BatchwriteArgs) (*d
 		return nil, nil
 	}
 
-	err := errors.New("Unprocessed items error")
+	err := errors.New("unprocessed items error")
 	log.Error().Err(err).Msg("")
 
 	return nextArgs, err
