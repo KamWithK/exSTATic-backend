@@ -147,13 +147,13 @@ func PutItemRequest(tableKey map[string]*dynamodb.AttributeValue, itemData inter
 	}, nil
 }
 
-func PutRawRequest(pk string, sk string, userMedia interface{}) *dynamodb.WriteRequest {
+func PutRawRequest(pk string, sk string, itemData interface{}) *dynamodb.WriteRequest {
 	tableKey, keyErr := GetCompositeKey(pk, sk)
 	if keyErr != nil {
 		return nil
 	}
 
-	writeRequest, writeErr := PutItemRequest(tableKey, userMedia)
+	writeRequest, writeErr := PutItemRequest(tableKey, itemData)
 
 	if writeErr != nil {
 		return nil
