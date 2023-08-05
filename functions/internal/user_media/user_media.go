@@ -2,6 +2,7 @@ package user_media
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -36,6 +37,10 @@ type UserMediaStat struct {
 	Stats      MediaStat    `json:"stats"`
 	LastUpdate int64        `json:"last_update"`
 	Pause      bool         `json:"pause"`
+}
+
+func ZeroPadInt64(number int64) string {
+	return fmt.Sprintf("%0*d", strconv.IntSize/4, number)
 }
 
 func UserMediaPK(key UserMediaKey) string {

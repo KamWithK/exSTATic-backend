@@ -3,9 +3,9 @@ package main
 import (
 	"testing"
 
+	"github.com/KamWithK/exSTATic-backend/internal/dynamo_wrapper"
 	"github.com/KamWithK/exSTATic-backend/internal/random_data"
 	"github.com/KamWithK/exSTATic-backend/internal/user_media"
-	"github.com/KamWithK/exSTATic-backend/internal/utils"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -45,7 +45,7 @@ func TestWriteMediaEntries(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, batchwriterArgs.WriteRequests)
 
-	output := utils.DistributedBatchWrites(dynamoSvc, batchwriterArgs)
+	output := dynamo_wrapper.DistributedBatchWrites(dynamoSvc, batchwriterArgs)
 	assert.Empty(t, output.WriteRequests)
 
 	for _, original := range inputMediaEntries {

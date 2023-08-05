@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/KamWithK/exSTATic-backend/internal/utils"
+	"github.com/KamWithK/exSTATic-backend/internal/dynamo_wrapper"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
@@ -31,15 +31,15 @@ type IntermediateStatItem struct {
 }
 
 func StatusUpdateSK(dateKey UserMediaDateKey) string {
-	return utils.ZeroPadInt64(dateKey.DateTime) + "#" + dateKey.Key.MediaIdentifier
+	return ZeroPadInt64(dateKey.DateTime) + "#" + dateKey.Key.MediaIdentifier
 }
 
 func CustomStatusUpdateSK(key UserMediaKey, date int64) string {
-	return utils.ZeroPadInt64(date) + "#" + key.MediaIdentifier
+	return ZeroPadInt64(date) + "#" + key.MediaIdentifier
 }
 
 func GetStatusUpdate(svc *dynamodb.DynamoDB, dateArgs UserMediaDateKey) (*UserMediaStat, error) {
-	tableKey, keyErr := utils.GetCompositeKey(UserMediaPK(dateArgs.Key), StatusUpdateSK(dateArgs))
+	tableKey, keyErr := dynamo_wrapper.GetCompositeKey(UserMediaPK(dateArgs.Key), StatusUpdateSK(dateArgs))
 	if keyErr != nil {
 		return nil, keyErr
 	}
@@ -69,7 +69,7 @@ func GetStatusUpdate(svc *dynamodb.DynamoDB, dateArgs UserMediaDateKey) (*UserMe
 }
 
 func DeleteStatusUpdate(svc *dynamodb.DynamoDB, dateArgs UserMediaDateKey) error {
-	tableKey, keyErr := utils.GetCompositeKey(UserMediaPK(dateArgs.Key), StatusUpdateSK(dateArgs))
+	tableKey, keyErr := dynamo_wrapper.GetCompositeKey(UserMediaPK(dateArgs.Key), StatusUpdateSK(dateArgs))
 	if keyErr != nil {
 		return keyErr
 	}
@@ -88,7 +88,7 @@ func DeleteStatusUpdate(svc *dynamodb.DynamoDB, dateArgs UserMediaDateKey) error
 
 func getDay(svc *dynamodb.DynamoDB, targetDay int64, key UserMediaKey) (map[string]*dynamodb.AttributeValue, *UserMediaStat, error) {
 	// Get key which represents this media today
-	tableKey, keyErr := utils.GetCompositeKey(UserMediaPK(key), CustomStatusUpdateSK(key, targetDay))
+	tableKey, keyErr := dynamo_wrapper.GetCompositeKey(UserMediaPK(key), CustomStatusUpdateSK(key, targetDay))
 	if keyErr != nil {
 		return nil, nil, keyErr
 	}
@@ -113,7 +113,7 @@ func getDay(svc *dynamodb.DynamoDB, targetDay int64, key UserMediaKey) (map[stri
 	currentStats.Date = &targetDay
 
 	if result.Item == nil {
-		return tableKey, &currentStats, utils.ErrEmptyItems
+		return tableKey, &currentStats, ErrEmptyItems
 	}
 
 	return tableKey, &currentStats, nil
@@ -179,7 +179,7 @@ func PutStatusUpdate(svc *dynamodb.DynamoDB, statusArgs StatusArgs, maxAFKTime i
 
 	// Find day
 	tableKey, userMediaStats, findDayErr := getDay(svc, DayRollback(localTime).Unix(), statusArgs.Key)
-	if findDayErr != nil && !errors.Is(findDayErr, utils.ErrEmptyItems) {
+	if findDayErr != nil && !errors.Is(findDayErr, ErrEmptyItems) {
 		return findDayErr
 	}
 
@@ -187,7 +187,7 @@ func PutStatusUpdate(svc *dynamodb.DynamoDB, statusArgs StatusArgs, maxAFKTime i
 	processProgress(userMediaStats, statusArgs.Stats, statusArgs.Progress, maxAFKTime)
 
 	// Put item
-	_, updateErr := utils.UpdateItem(svc, "media", tableKey, userMediaStats)
+	_, updateErr := dynamo_wrapper.UpdateItem(svc, "media", tableKey, userMediaStats)
 	if updateErr != nil {
 		return updateErr
 	}

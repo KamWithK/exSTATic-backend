@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/KamWithK/exSTATic-backend/internal/utils"
+	"github.com/KamWithK/exSTATic-backend/internal/dynamo_wrapper"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
@@ -22,7 +22,7 @@ func MediaInfoSK(key UserMediaKey) string {
 }
 
 func GetMediaInfo(svc *dynamodb.DynamoDB, key UserMediaKey) (*UserMediaEntry, error) {
-	tableKey, keyErr := utils.GetCompositeKey(UserMediaPK(key), MediaInfoSK(key))
+	tableKey, keyErr := dynamo_wrapper.GetCompositeKey(UserMediaPK(key), MediaInfoSK(key))
 	if keyErr != nil {
 		return nil, keyErr
 	}
@@ -54,12 +54,12 @@ func GetMediaInfo(svc *dynamodb.DynamoDB, key UserMediaKey) (*UserMediaEntry, er
 func PutMediaInfo(svc *dynamodb.DynamoDB, userMediaEntry UserMediaEntry) error {
 	userMediaEntry.LastUpdate = time.Now().UTC().Unix()
 
-	tableKey, keyErr := utils.GetCompositeKey(UserMediaPK(userMediaEntry.Key), MediaInfoSK(userMediaEntry.Key))
+	tableKey, keyErr := dynamo_wrapper.GetCompositeKey(UserMediaPK(userMediaEntry.Key), MediaInfoSK(userMediaEntry.Key))
 	if keyErr != nil {
 		return keyErr
 	}
 
-	_, updateErr := utils.UpdateItem(svc, "media", tableKey, userMediaEntry)
+	_, updateErr := dynamo_wrapper.UpdateItem(svc, "media", tableKey, userMediaEntry)
 	if updateErr != nil {
 		return updateErr
 	}

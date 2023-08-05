@@ -1,4 +1,4 @@
-package utils
+package dynamo_wrapper
 
 import (
 	"reflect"

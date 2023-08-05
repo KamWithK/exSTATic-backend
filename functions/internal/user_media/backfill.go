@@ -3,7 +3,7 @@ package user_media
 import (
 	"errors"
 
-	"github.com/KamWithK/exSTATic-backend/internal/utils"
+	"github.com/KamWithK/exSTATic-backend/internal/dynamo_wrapper"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
@@ -25,7 +25,7 @@ func GetBackfill(svc *dynamodb.DynamoDB, userMediaDateKey UserMediaDateKey) (*Ba
 				S: aws.String(UserMediaPK(userMediaDateKey.Key)),
 			},
 			":lastUpdate": {
-				N: aws.String(utils.ZeroPadInt64(userMediaDateKey.DateTime)),
+				N: aws.String(ZeroPadInt64(userMediaDateKey.DateTime)),
 			},
 		},
 		IndexName: aws.String("lastUpdatedIndex"),
@@ -78,7 +78,7 @@ func GetBackfill(svc *dynamodb.DynamoDB, userMediaDateKey UserMediaDateKey) (*Ba
 	}, nil
 }
 
-func PutBackfill(history BackfillArgs) (*utils.BatchwriteArgs, error) {
+func PutBackfill(history BackfillArgs) (*dynamo_wrapper.BatchwriteArgs, error) {
 	username := history.Username
 
 	if len(username) == 0 {
@@ -91,7 +91,7 @@ func PutBackfill(history BackfillArgs) (*utils.BatchwriteArgs, error) {
 	writeRequests := []*dynamodb.WriteRequest{}
 
 	for _, userMedia := range history.MediaEntries {
-		writeRequest := utils.PutRawRequest(UserMediaPK(userMedia.Key), MediaInfoSK(userMedia.Key), &userMedia)
+		writeRequest := dynamo_wrapper.PutRawRequest(UserMediaPK(userMedia.Key), MediaInfoSK(userMedia.Key), &userMedia)
 		if userMedia.Key.Username != username {
 			err := errors.New("username mismatch")
 			log.Info().Err(err).Send()
@@ -101,7 +101,7 @@ func PutBackfill(history BackfillArgs) (*utils.BatchwriteArgs, error) {
 	}
 
 	for _, userMedia := range history.MediaStats {
-		writeRequest := utils.PutRawRequest(UserMediaPK(userMedia.Key), CustomStatusUpdateSK(userMedia.Key, *userMedia.Date), &userMedia)
+		writeRequest := dynamo_wrapper.PutRawRequest(UserMediaPK(userMedia.Key), CustomStatusUpdateSK(userMedia.Key, *userMedia.Date), &userMedia)
 		if userMedia.Key.Username != username {
 			err := errors.New("username mismatch")
 			log.Info().Err(err).Send()
@@ -117,7 +117,7 @@ func PutBackfill(history BackfillArgs) (*utils.BatchwriteArgs, error) {
 		return nil, err
 	}
 
-	return &utils.BatchwriteArgs{
+	return &dynamo_wrapper.BatchwriteArgs{
 		WriteRequests: writeRequests,
 		TableName:     "media",
 		MaxBatchSize:  25,

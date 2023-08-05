@@ -3,7 +3,8 @@ package settings
 import (
 	"errors"
 
-	"github.com/KamWithK/exSTATic-backend/internal/utils"
+	"github.com/KamWithK/exSTATic-backend/internal/dynamo_wrapper"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
@@ -63,7 +64,7 @@ func PutUserSettings(svc *dynamodb.DynamoDB, options UserSettings) error {
 		return keyErr
 	}
 
-	_, updateErr := utils.UpdateItem(svc, "settings", tableKey, options)
+	_, updateErr := dynamo_wrapper.UpdateItem(svc, "settings", tableKey, options)
 	if updateErr != nil {
 		return updateErr
 	}
