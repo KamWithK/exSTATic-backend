@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/KamWithK/exSTATic-backend/internal/dynamo_wrapper"
-	"github.com/KamWithK/exSTATic-backend/internal/random_data"
 	"github.com/KamWithK/exSTATic-backend/internal/user_media"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -37,7 +36,7 @@ func TestWriteMediaEntries(t *testing.T) {
 	fake := faker.New()
 	user := fake.Person().Name()
 
-	inputMediaEntries := random_data.RandomMediaEntries(fake, user, 100)
+	inputMediaEntries := user_media.RandomMediaEntries(fake, user, 100)
 	batchwriterArgs, err := user_media.PutBackfill(user_media.BackfillArgs{
 		Username:     user,
 		MediaEntries: inputMediaEntries,
