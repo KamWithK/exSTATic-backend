@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	"github.com/KamWithK/exSTATic-backend/internal/models"
+	"github.com/KamWithK/exSTATic-backend/internal/user_media"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -19,8 +19,8 @@ func init() {
 	svc = dynamodb.New(sess)
 }
 
-func HandleRequest(ctx context.Context, statusArgs models.StatusArgs) error {
-	return models.PutStatusUpdate(svc, statusArgs, 120)
+func HandleRequest(ctx context.Context, statusArgs user_media.StatusArgs) error {
+	return user_media.PutStatusUpdate(svc, statusArgs, 120)
 }
 
 func main() {

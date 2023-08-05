@@ -3,8 +3,10 @@ package main
 import (
 	"testing"
 
-	"github.com/KamWithK/exSTATic-backend/internal/models"
+	"github.com/KamWithK/exSTATic-backend/internal/random_data"
+	"github.com/KamWithK/exSTATic-backend/internal/user_media"
 	"github.com/KamWithK/exSTATic-backend/internal/utils"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
@@ -35,8 +37,8 @@ func TestWriteMediaEntries(t *testing.T) {
 	fake := faker.New()
 	user := fake.Person().Name()
 
-	inputMediaEntries := models.RandomMediaEntries(fake, user, 100)
-	batchwriterArgs, err := models.PutBackfill(models.BackfillArgs{
+	inputMediaEntries := random_data.RandomMediaEntries(fake, user, 100)
+	batchwriterArgs, err := user_media.PutBackfill(user_media.BackfillArgs{
 		Username:     user,
 		MediaEntries: inputMediaEntries,
 	})
@@ -47,7 +49,7 @@ func TestWriteMediaEntries(t *testing.T) {
 	assert.Empty(t, output.WriteRequests)
 
 	for _, original := range inputMediaEntries {
-		result, err := models.GetMediaInfo(dynamoSvc, original.Key)
+		result, err := user_media.GetMediaInfo(dynamoSvc, original.Key)
 		assert.NoError(t, err)
 		assert.Equal(t, original, *result)
 	}

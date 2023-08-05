@@ -4,14 +4,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/KamWithK/exSTATic-backend/internal/models"
+	"github.com/KamWithK/exSTATic-backend/internal/random_data"
+	"github.com/KamWithK/exSTATic-backend/internal/user_media"
+
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/jaswdr/faker"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNull(t *testing.T) {
-	result, err := models.PutBackfill(models.BackfillArgs{})
+	result, err := user_media.PutBackfill(user_media.BackfillArgs{})
 
 	assert.Nil(t, result, "No input => no writes")
 	assert.Error(t, err)
@@ -20,9 +22,9 @@ func TestNull(t *testing.T) {
 func TestNoUsername(t *testing.T) {
 	fake := faker.New()
 
-	result, err := models.PutBackfill(models.BackfillArgs{
+	result, err := user_media.PutBackfill(user_media.BackfillArgs{
 		Username:     "",
-		MediaEntries: models.RandomMediaEntries(fake, "", 3),
+		MediaEntries: random_data.RandomMediaEntries(fake, "", 3),
 	})
 
 	assert.Nil(t, result, "Writes can't be performed when no username is entered")
@@ -36,9 +38,9 @@ func TestMultipleUsernames(t *testing.T) {
 
 	invalidEntries, validEntries := 5, 3
 
-	results, err := models.PutBackfill(models.BackfillArgs{
+	results, err := user_media.PutBackfill(user_media.BackfillArgs{
 		Username:     user1,
-		MediaEntries: append(models.RandomMediaEntries(fake, user2, invalidEntries), models.RandomMediaEntries(fake, user1, validEntries)...),
+		MediaEntries: append(random_data.RandomMediaEntries(fake, user2, invalidEntries), random_data.RandomMediaEntries(fake, user1, validEntries)...),
 	})
 
 	assert.Len(t, results.WriteRequests, validEntries, "Entries with different usernames aren't valid")
@@ -49,9 +51,9 @@ func TestWriteMediaEntries(t *testing.T) {
 	fake := faker.New()
 	user := fake.Person().Name()
 
-	inputMediaEntries, producedMediaEntries := models.RandomMediaEntries(fake, user, 100), []models.UserMediaEntry{}
+	inputMediaEntries, producedMediaEntries := random_data.RandomMediaEntries(fake, user, 100), []user_media.UserMediaEntry{}
 
-	results, err := models.PutBackfill(models.BackfillArgs{
+	results, err := user_media.PutBackfill(user_media.BackfillArgs{
 		Username:     user,
 		MediaEntries: inputMediaEntries,
 	})
@@ -60,14 +62,14 @@ func TestWriteMediaEntries(t *testing.T) {
 	assert.NotNil(t, results)
 
 	for _, writeRequest := range results.WriteRequests {
-		intermediateItem := models.IntermediateEntryItem{}
+		intermediateItem := user_media.IntermediateEntryItem{}
 
 		unmarshalErr := dynamodbattribute.UnmarshalMap(writeRequest.PutRequest.Item, &intermediateItem)
 		assert.NoError(t, unmarshalErr)
 
 		splitPK := strings.Split(intermediateItem.PK, "#")
 		assert.Len(t, splitPK, 2, "PK should precisely be composed of the media type and username")
-		intermediateItem.Key = models.UserMediaKey{
+		intermediateItem.Key = user_media.UserMediaKey{
 			Username:        splitPK[1],
 			MediaType:       splitPK[0],
 			MediaIdentifier: intermediateItem.SK,
@@ -83,14 +85,14 @@ func TestWriteMediaStats(t *testing.T) {
 	fake := faker.New()
 	user := fake.Person().Name()
 
-	mediaEntries := models.RandomMediaEntries(fake, user, 100)
-	inputMediaStats, producedMediaStats := []models.UserMediaStat{}, []models.UserMediaStat{}
+	mediaEntries := random_data.RandomMediaEntries(fake, user, 100)
+	inputMediaStats, producedMediaStats := []user_media.UserMediaStat{}, []user_media.UserMediaStat{}
 
 	for _, mediaEntry := range mediaEntries {
-		inputMediaStats = append(inputMediaStats, models.RandomMediaStats(fake, mediaEntry.Key, 30, 0.8)...)
+		inputMediaStats = append(inputMediaStats, random_data.RandomMediaStats(fake, mediaEntry.Key, 30, 0.8)...)
 	}
 
-	results, err := models.PutBackfill(models.BackfillArgs{
+	results, err := user_media.PutBackfill(user_media.BackfillArgs{
 		Username:   user,
 		MediaStats: inputMediaStats,
 	})
@@ -99,7 +101,7 @@ func TestWriteMediaStats(t *testing.T) {
 	assert.NotNil(t, results)
 
 	for _, writeRequest := range results.WriteRequests {
-		intermediateItem := models.IntermediateStatItem{}
+		intermediateItem := user_media.IntermediateStatItem{}
 
 		unmarshalErr := dynamodbattribute.UnmarshalMap(writeRequest.PutRequest.Item, &intermediateItem)
 		assert.NoError(t, unmarshalErr)
@@ -108,7 +110,7 @@ func TestWriteMediaStats(t *testing.T) {
 		splitSK := strings.Split(intermediateItem.SK, "#")
 		assert.Len(t, splitPK, 2, "PK should precisely be composed of the media type and username")
 		assert.Len(t, splitSK, 2, "SK should precisely be composed of the zero padded unix epoch date and media identifier")
-		intermediateItem.Key = models.UserMediaKey{
+		intermediateItem.Key = user_media.UserMediaKey{
 			Username:        splitPK[1],
 			MediaType:       splitPK[0],
 			MediaIdentifier: splitSK[1],

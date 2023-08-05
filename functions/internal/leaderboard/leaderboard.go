@@ -1,4 +1,4 @@
-package models
+package leaderboard
 
 type LeaderboardKey struct {
 	Username   string `json:"username" binding:"required"`

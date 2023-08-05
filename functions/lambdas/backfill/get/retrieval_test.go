@@ -3,8 +3,10 @@ package main
 import (
 	"testing"
 
-	"github.com/KamWithK/exSTATic-backend/internal/models"
+	"github.com/KamWithK/exSTATic-backend/internal/random_data"
+	"github.com/KamWithK/exSTATic-backend/internal/user_media"
 	"github.com/KamWithK/exSTATic-backend/internal/utils"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
@@ -35,8 +37,8 @@ func TestBackfillEntries(t *testing.T) {
 	user := fake.Person().Name()
 	numDays := 100
 
-	inputMediaEntries := models.RandomMediaEntries(fake, user, numDays)
-	batchwriterArgs, err := models.PutBackfill(models.BackfillArgs{
+	inputMediaEntries := random_data.RandomMediaEntries(fake, user, numDays)
+	batchwriterArgs, err := user_media.PutBackfill(user_media.BackfillArgs{
 		Username:     user,
 		MediaEntries: inputMediaEntries,
 	})
@@ -46,8 +48,8 @@ func TestBackfillEntries(t *testing.T) {
 	output := utils.DistributedBatchWrites(dynamoSvc, batchwriterArgs)
 	assert.Empty(t, output.WriteRequests)
 
-	storedHistory, backfillErr := models.GetBackfill(dynamoSvc, models.UserMediaDateKey{
-		Key: models.UserMediaKey{
+	storedHistory, backfillErr := user_media.GetBackfill(dynamoSvc, user_media.UserMediaDateKey{
+		Key: user_media.UserMediaKey{
 			Username:  user,
 			MediaType: "vn",
 		},
@@ -56,7 +58,7 @@ func TestBackfillEntries(t *testing.T) {
 	assert.NoError(t, backfillErr)
 	assert.NotEmpty(t, storedHistory.MediaEntries)
 
-	newEntries := map[models.UserMediaKey]models.UserMediaEntry{}
+	newEntries := map[user_media.UserMediaKey]user_media.UserMediaEntry{}
 	for _, newEntry := range storedHistory.MediaEntries {
 		newEntries[newEntry.Key] = newEntry
 	}

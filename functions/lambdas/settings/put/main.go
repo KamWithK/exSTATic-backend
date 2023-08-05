@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	"github.com/KamWithK/exSTATic-backend/internal/models"
+	"github.com/KamWithK/exSTATic-backend/internal/settings"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -20,8 +20,8 @@ func init() {
 	svc = dynamodb.New(sess)
 }
 
-func HandleRequest(ctx context.Context, options models.UserSettings) error {
-	return models.PutUserSettings(svc, options)
+func HandleRequest(ctx context.Context, options settings.UserSettings) error {
+	return settings.PutUserSettings(svc, options)
 }
 
 func main() {
