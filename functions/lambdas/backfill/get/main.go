@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 
+	"github.com/KamWithK/exSTATic-backend/internal/backfill"
 	"github.com/KamWithK/exSTATic-backend/internal/user_media"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -19,8 +20,8 @@ func init() {
 	svc = dynamodb.New(sess)
 }
 
-func HandleRequest(ctx context.Context, userMediaDateKey user_media.UserMediaDateKey) (*user_media.BackfillArgs, error) {
-	return user_media.GetBackfill(svc, userMediaDateKey)
+func HandleRequest(ctx context.Context, userMediaDateKey user_media.UserMediaDateKey) (*backfill.BackfillArgs, error) {
+	return backfill.GetBackfill(svc, userMediaDateKey)
 }
 
 func main() {

@@ -1,9 +1,10 @@
-package user_media
+package backfill
 
 import (
 	"errors"
 
 	"github.com/KamWithK/exSTATic-backend/internal/dynamo_wrapper"
+	"github.com/KamWithK/exSTATic-backend/internal/user_media"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
@@ -11,21 +12,21 @@ import (
 )
 
 type BackfillArgs struct {
-	Username     string           `json:"username"`
-	MediaEntries []UserMediaEntry `json:"media_entries"`
-	MediaStats   []UserMediaStat  `json:"media_stats"`
+	Username     string                      `json:"username"`
+	MediaEntries []user_media.UserMediaEntry `json:"media_entries"`
+	MediaStats   []user_media.UserMediaStat  `json:"media_stats"`
 }
 
-func GetBackfill(svc *dynamodb.DynamoDB, userMediaDateKey UserMediaDateKey) (*BackfillArgs, error) {
+func GetBackfill(svc *dynamodb.DynamoDB, userMediaDateKey user_media.UserMediaDateKey) (*BackfillArgs, error) {
 	queryInput := &dynamodb.QueryInput{
 		TableName:              aws.String("media"),
 		KeyConditionExpression: aws.String("pk = :pk AND last_update >= :lastUpdate"),
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
 			":pk": {
-				S: aws.String(UserMediaPK(userMediaDateKey.Key)),
+				S: aws.String(user_media.UserMediaPK(userMediaDateKey.Key)),
 			},
 			":lastUpdate": {
-				N: aws.String(ZeroPadInt64(userMediaDateKey.DateTime)),
+				N: aws.String(user_media.ZeroPadInt64(userMediaDateKey.DateTime)),
 			},
 		},
 		IndexName: aws.String("lastUpdatedIndex"),
@@ -37,17 +38,17 @@ func GetBackfill(svc *dynamodb.DynamoDB, userMediaDateKey UserMediaDateKey) (*Ba
 		return nil, queryErr
 	}
 
-	mediaEntries := []UserMediaEntry{}
-	mediaStats := []UserMediaStat{}
+	mediaEntries := []user_media.UserMediaEntry{}
+	mediaStats := []user_media.UserMediaStat{}
 
 	for _, item := range result.Items {
 		pk, sk := *item["pk"].S, *item["sk"].S
-		key, date, splitErr := SplitUserMediaCompositeKey(pk, sk)
+		key, date, splitErr := user_media.SplitUserMediaCompositeKey(pk, sk)
 
 		if splitErr != nil {
 			log.Error().Err(splitErr).Str("pk", pk).Str("sk", sk).Interface("item", item).Msg("Could not split keys")
 		} else if key != nil && date == nil {
-			mediaEntry := UserMediaEntry{}
+			mediaEntry := user_media.UserMediaEntry{}
 			unmarshalErr := dynamodbattribute.UnmarshalMap(item, &mediaEntry)
 			mediaEntry.Key = *key
 
@@ -57,7 +58,7 @@ func GetBackfill(svc *dynamodb.DynamoDB, userMediaDateKey UserMediaDateKey) (*Ba
 				mediaEntries = append(mediaEntries, mediaEntry)
 			}
 		} else if key != nil {
-			mediaStat := UserMediaStat{}
+			mediaStat := user_media.UserMediaStat{}
 			unmarshalErr := dynamodbattribute.UnmarshalMap(item, &mediaStat)
 			mediaStat.Key = *key
 
@@ -91,7 +92,7 @@ func PutBackfill(history BackfillArgs) (*dynamo_wrapper.BatchwriteArgs, error) {
 	writeRequests := []*dynamodb.WriteRequest{}
 
 	for _, userMedia := range history.MediaEntries {
-		writeRequest := dynamo_wrapper.PutRawRequest(UserMediaPK(userMedia.Key), MediaInfoSK(userMedia.Key), &userMedia)
+		writeRequest := dynamo_wrapper.PutRawRequest(user_media.UserMediaPK(userMedia.Key), user_media.MediaInfoSK(userMedia.Key), &userMedia)
 		if userMedia.Key.Username != username {
 			err := errors.New("username mismatch")
 			log.Info().Err(err).Send()
@@ -101,7 +102,7 @@ func PutBackfill(history BackfillArgs) (*dynamo_wrapper.BatchwriteArgs, error) {
 	}
 
 	for _, userMedia := range history.MediaStats {
-		writeRequest := dynamo_wrapper.PutRawRequest(UserMediaPK(userMedia.Key), CustomStatusUpdateSK(userMedia.Key, *userMedia.Date), &userMedia)
+		writeRequest := dynamo_wrapper.PutRawRequest(user_media.UserMediaPK(userMedia.Key), user_media.CustomStatusUpdateSK(userMedia.Key, *userMedia.Date), &userMedia)
 		if userMedia.Key.Username != username {
 			err := errors.New("username mismatch")
 			log.Info().Err(err).Send()

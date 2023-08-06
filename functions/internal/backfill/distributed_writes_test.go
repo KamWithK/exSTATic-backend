@@ -1,4 +1,4 @@
-package main
+package backfill
 
 import (
 	"testing"
@@ -16,10 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const EndpointURL = "http://localhost:4566/"
-
-var dynamoSvc *dynamodb.DynamoDB
-
 func init() {
 	sess = session.Must(session.NewSessionWithOptions(session.Options{
 		Config: aws.Config{
@@ -32,12 +28,12 @@ func init() {
 	dynamoSvc = dynamodb.New(sess)
 }
 
-func TestWriteMediaEntries(t *testing.T) {
+func TestDistributedBatchWrites(t *testing.T) {
 	fake := faker.New()
 	user := fake.Person().Name()
 
 	inputMediaEntries := user_media.RandomMediaEntries(fake, user, 100)
-	batchwriterArgs, err := user_media.PutBackfill(user_media.BackfillArgs{
+	batchwriterArgs, err := PutBackfill(BackfillArgs{
 		Username:     user,
 		MediaEntries: inputMediaEntries,
 	})
