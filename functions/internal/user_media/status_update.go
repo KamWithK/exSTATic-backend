@@ -129,6 +129,12 @@ func processProgress(previousSats *UserMediaStat, additiveStats MediaStat, progr
 func PutStatusUpdate(svc *dynamodb.DynamoDB, statusArgs StatusArgs, maxAFKTime int16) error {
 	// Load times
 	timeNow := time.Now().UTC()
+
+	if len(statusArgs.Progress) == 0 {
+		err := errors.New("no given progress, will be ignored")
+		log.Info().Err(err).Send()
+		return err
+	}
 	givenTime := time.Unix(statusArgs.Progress[0].DateTime, 0)
 
 	// Anti-cheat measure
