@@ -158,7 +158,7 @@ func PutStatusUpdate(svc *dynamodb.DynamoDB, statusArgs StatusArgs, maxAFKTime i
 	processProgress(userMediaStats, statusArgs.Stats, statusArgs.Progress, maxAFKTime)
 
 	// Put item
-	_, updateErr := dynamo_wrapper.UpdateItem(svc, "media", tableKey, userMediaStats)
+	_, updateErr := dynamo_wrapper.UpdateItem(svc, "media", tableKey, *userMediaStats)
 	if updateErr != nil {
 		return updateErr
 	}
