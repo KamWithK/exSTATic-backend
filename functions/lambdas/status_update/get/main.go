@@ -20,7 +20,8 @@ func init() {
 }
 
 func HandleRequest(ctx context.Context, dateArgs user_media.UserMediaDateKey) (*user_media.UserMediaStat, error) {
-	return user_media.GetStatusUpdate(svc, dateArgs)
+	_, userMediaStat, err := user_media.GetStatusUpdate(svc, dateArgs)
+	return userMediaStat, err
 }
 
 func main() {

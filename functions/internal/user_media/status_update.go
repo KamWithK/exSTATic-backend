@@ -38,10 +38,10 @@ func CustomStatusUpdateSK(key UserMediaKey, date int64) string {
 	return ZeroPadInt64(date) + "#" + key.MediaIdentifier
 }
 
-func GetStatusUpdate(svc *dynamodb.DynamoDB, dateArgs UserMediaDateKey) (*UserMediaStat, error) {
+func GetStatusUpdate(svc *dynamodb.DynamoDB, dateArgs UserMediaDateKey) (map[string]*dynamodb.AttributeValue, *UserMediaStat, error) {
 	tableKey, keyErr := dynamo_wrapper.GetCompositeKey(UserMediaPK(dateArgs.Key), StatusUpdateSK(dateArgs))
 	if keyErr != nil {
-		return nil, keyErr
+		return nil, nil, keyErr
 	}
 
 	result, getErr := svc.GetItem(&dynamodb.GetItemInput{
@@ -50,22 +50,23 @@ func GetStatusUpdate(svc *dynamodb.DynamoDB, dateArgs UserMediaDateKey) (*UserMe
 	})
 	if getErr != nil {
 		log.Error().Str("table", "media").Interface("key", dateArgs.Key).Msg("Dynamodb failed to get item")
-		return nil, getErr
-	}
-
-	if result.Item == nil || len(result.Item) == 0 {
-		log.Info().Str("table", "media").Interface("key", dateArgs.Key).Msg("Item not in table")
-		return nil, errors.New("item not found in table")
+		return nil, nil, getErr
 	}
 
 	mediaStats := UserMediaStat{}
 	if unmarshalErr := dynamodbattribute.UnmarshalMap(result.Item, &mediaStats); unmarshalErr != nil {
 		log.Error().Err(unmarshalErr).Str("table", "media").Interface("key", dateArgs.Key).Interface("item", result.Item).Msg("Could not unmarshal dynamodb item")
-		return nil, unmarshalErr
+		return nil, nil, unmarshalErr
 	}
-	mediaStats.Key = dateArgs.Key
 
-	return &mediaStats, nil
+	mediaStats.Key = dateArgs.Key
+	mediaStats.Date = &dateArgs.DateTime
+
+	if result.Item == nil || len(result.Item) == 0 {
+		return tableKey, &mediaStats, ErrEmptyItems
+	}
+
+	return tableKey, &mediaStats, nil
 }
 
 func DeleteStatusUpdate(svc *dynamodb.DynamoDB, dateArgs UserMediaDateKey) error {
@@ -84,39 +85,6 @@ func DeleteStatusUpdate(svc *dynamodb.DynamoDB, dateArgs UserMediaDateKey) error
 	}
 
 	return nil
-}
-
-func getDay(svc *dynamodb.DynamoDB, targetDay int64, key UserMediaKey) (map[string]*dynamodb.AttributeValue, *UserMediaStat, error) {
-	// Get key which represents this media today
-	tableKey, keyErr := dynamo_wrapper.GetCompositeKey(UserMediaPK(key), CustomStatusUpdateSK(key, targetDay))
-	if keyErr != nil {
-		return nil, nil, keyErr
-	}
-
-	// Get entry from database if it exists
-	result, getErr := svc.GetItem(&dynamodb.GetItemInput{
-		TableName: aws.String("media"),
-		Key:       tableKey,
-	})
-	if getErr != nil {
-		log.Info().Str("table", "media").Interface("key", key).Msg("Attempt to get items errored")
-		return nil, nil, getErr
-	}
-
-	currentStats := UserMediaStat{}
-	if unmarshalErr := dynamodbattribute.UnmarshalMap(result.Item, &currentStats); unmarshalErr != nil {
-		log.Error().Err(unmarshalErr).Str("table", "media").Interface("key", key).Interface("item", result.Item).Msg("Could not unmarshal dynamodb item")
-		return nil, nil, unmarshalErr
-	}
-
-	currentStats.Key = key
-	currentStats.Date = &targetDay
-
-	if result.Item == nil {
-		return tableKey, &currentStats, ErrEmptyItems
-	}
-
-	return tableKey, &currentStats, nil
 }
 
 func DayRollback(timeNow time.Time) time.Time {
@@ -178,7 +146,10 @@ func PutStatusUpdate(svc *dynamodb.DynamoDB, statusArgs StatusArgs, maxAFKTime i
 	localTime := givenTime.In(location)
 
 	// Find day
-	tableKey, userMediaStats, findDayErr := getDay(svc, DayRollback(localTime).Unix(), statusArgs.Key)
+	tableKey, userMediaStats, findDayErr := GetStatusUpdate(svc, UserMediaDateKey{
+		Key:      statusArgs.Key,
+		DateTime: DayRollback(localTime).Unix(),
+	})
 	if findDayErr != nil && !errors.Is(findDayErr, ErrEmptyItems) {
 		return findDayErr
 	}
