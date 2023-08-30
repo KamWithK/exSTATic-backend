@@ -63,10 +63,8 @@ func CreateUpdateExpressionAttributes(optionArgs interface{}) (string, map[strin
 		fieldType := typeOfOptionArgs.Field(i)
 
 		if field.Kind() != reflect.Invalid && !field.IsZero() {
-			if fieldType.Name != "Key" {
-				jsonTag := strings.Split(fieldType.Tag.Get("json"), ",")[0]
-				RemoveNullAttributes(&updateExpression, expressionAttributeNames, expressionAttributeValues, fieldType.Name, jsonTag, field.Interface())
-			}
+			jsonTag := strings.Split(fieldType.Tag.Get("json"), ",")[0]
+			RemoveNullAttributes(&updateExpression, expressionAttributeNames, expressionAttributeValues, fieldType.Name, jsonTag, field.Interface())
 		}
 	}
 

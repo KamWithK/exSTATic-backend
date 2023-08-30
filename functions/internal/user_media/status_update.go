@@ -24,18 +24,8 @@ type StatusArgs struct {
 	Timezone string         `json:"timezone" binding:"required"`
 }
 
-type IntermediateStatItem struct {
-	PK string `dynamodbav:"pk"`
-	SK string `dynamodbav:"sk"`
-	UserMediaStat
-}
-
 func StatusUpdateSK(dateKey UserMediaDateKey) string {
 	return ZeroPadInt64(dateKey.DateTime) + "#" + dateKey.Key.MediaIdentifier
-}
-
-func CustomStatusUpdateSK(key UserMediaKey, date int64) string {
-	return ZeroPadInt64(date) + "#" + key.MediaIdentifier
 }
 
 func GetStatusUpdate(svc *dynamodb.DynamoDB, dateArgs UserMediaDateKey) (map[string]*dynamodb.AttributeValue, *UserMediaStat, error) {
@@ -58,9 +48,6 @@ func GetStatusUpdate(svc *dynamodb.DynamoDB, dateArgs UserMediaDateKey) (map[str
 		log.Error().Err(unmarshalErr).Str("table", "media").Interface("key", dateArgs.Key).Interface("item", result.Item).Msg("Could not unmarshal dynamodb item")
 		return nil, nil, unmarshalErr
 	}
-
-	mediaStats.Key = dateArgs.Key
-	mediaStats.Date = &dateArgs.DateTime
 
 	if result.Item == nil || len(result.Item) == 0 {
 		return tableKey, &mediaStats, ErrEmptyItems

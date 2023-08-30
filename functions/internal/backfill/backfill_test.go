@@ -1,6 +1,7 @@
 package backfill
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 
@@ -14,7 +15,20 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/jaswdr/faker"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/maps"
 )
+
+type IntermediateEntryItem struct {
+	PK string `dynamodbav:"pk"`
+	SK string `dynamodbav:"sk"`
+	user_media.UserMediaEntry
+}
+
+type IntermediateStatItem struct {
+	PK string `dynamodbav:"pk"`
+	SK string `dynamodbav:"sk"`
+	user_media.UserMediaStat
+}
 
 const EndpointURL = "http://localhost:4566/"
 
@@ -59,9 +73,12 @@ func TestMultipleUsernames(t *testing.T) {
 
 	invalidEntries, validEntries := 5, 3
 
+	userMediaEntries := user_media.RandomMediaEntries(fake, user1, validEntries)
+	maps.Copy(userMediaEntries, user_media.RandomMediaEntries(fake, user2, invalidEntries))
+
 	results, err := PutBackfill(BackfillArgs{
 		Username:     user1,
-		MediaEntries: append(user_media.RandomMediaEntries(fake, user2, invalidEntries), user_media.RandomMediaEntries(fake, user1, validEntries)...),
+		MediaEntries: userMediaEntries,
 	})
 
 	assert.Len(t, results.WriteRequests, validEntries, "Entries with different usernames aren't valid")
@@ -72,7 +89,7 @@ func TestWriteMediaEntries(t *testing.T) {
 	fake := faker.New()
 	user := fake.Person().Name()
 
-	inputMediaEntries, producedMediaEntries := user_media.RandomMediaEntries(fake, user, 100), []user_media.UserMediaEntry{}
+	inputMediaEntries, producedMediaEntries := user_media.RandomMediaEntries(fake, user, 100), map[user_media.UserMediaKey]user_media.UserMediaEntry{}
 
 	results, err := PutBackfill(BackfillArgs{
 		Username:     user,
@@ -83,20 +100,20 @@ func TestWriteMediaEntries(t *testing.T) {
 	assert.NotNil(t, results)
 
 	for _, writeRequest := range results.WriteRequests {
-		intermediateItem := user_media.IntermediateEntryItem{}
+		intermediateItem := IntermediateEntryItem{}
 
 		unmarshalErr := dynamodbattribute.UnmarshalMap(writeRequest.PutRequest.Item, &intermediateItem)
 		assert.NoError(t, unmarshalErr)
 
 		splitPK := strings.Split(intermediateItem.PK, "#")
 		assert.Len(t, splitPK, 2, "PK should precisely be composed of the media type and username")
-		intermediateItem.Key = user_media.UserMediaKey{
+
+		key := user_media.UserMediaKey{
 			Username:        splitPK[1],
 			MediaType:       splitPK[0],
 			MediaIdentifier: intermediateItem.SK,
 		}
-
-		producedMediaEntries = append(producedMediaEntries, intermediateItem.UserMediaEntry)
+		producedMediaEntries[key] = intermediateItem.UserMediaEntry
 	}
 
 	assert.Equal(t, inputMediaEntries, producedMediaEntries)
@@ -107,10 +124,10 @@ func TestWriteMediaStats(t *testing.T) {
 	user := fake.Person().Name()
 
 	mediaEntries := user_media.RandomMediaEntries(fake, user, 100)
-	inputMediaStats, producedMediaStats := []user_media.UserMediaStat{}, []user_media.UserMediaStat{}
+	inputMediaStats, producedMediaStats := map[user_media.UserMediaDateKey]user_media.UserMediaStat{}, map[user_media.UserMediaDateKey]user_media.UserMediaStat{}
 
-	for _, mediaEntry := range mediaEntries {
-		inputMediaStats = append(inputMediaStats, user_media.RandomMediaStats(fake, mediaEntry.Key, 30, 0.8)...)
+	for key := range mediaEntries {
+		maps.Copy(inputMediaStats, user_media.RandomMediaStats(fake, key, 30, 0.8))
 	}
 
 	results, err := PutBackfill(BackfillArgs{
@@ -122,7 +139,7 @@ func TestWriteMediaStats(t *testing.T) {
 	assert.NotNil(t, results)
 
 	for _, writeRequest := range results.WriteRequests {
-		intermediateItem := user_media.IntermediateStatItem{}
+		intermediateItem := IntermediateStatItem{}
 
 		unmarshalErr := dynamodbattribute.UnmarshalMap(writeRequest.PutRequest.Item, &intermediateItem)
 		assert.NoError(t, unmarshalErr)
@@ -131,13 +148,19 @@ func TestWriteMediaStats(t *testing.T) {
 		splitSK := strings.Split(intermediateItem.SK, "#")
 		assert.Len(t, splitPK, 2, "PK should precisely be composed of the media type and username")
 		assert.Len(t, splitSK, 2, "SK should precisely be composed of the zero padded unix epoch date and media identifier")
-		intermediateItem.Key = user_media.UserMediaKey{
-			Username:        splitPK[1],
-			MediaType:       splitPK[0],
-			MediaIdentifier: splitSK[1],
-		}
 
-		producedMediaStats = append(producedMediaStats, intermediateItem.UserMediaStat)
+		date, parseIntErr := strconv.ParseInt(splitSK[0], 10, 64)
+		assert.NoError(t, parseIntErr)
+
+		key := user_media.UserMediaDateKey{
+			Key: user_media.UserMediaKey{
+				Username:        splitPK[1],
+				MediaType:       splitPK[0],
+				MediaIdentifier: splitSK[1],
+			},
+			DateTime: date,
+		}
+		producedMediaStats[key] = intermediateItem.UserMediaStat
 	}
 
 	assert.Equal(t, inputMediaStats, producedMediaStats)
@@ -170,11 +193,11 @@ func TestStorageRetrieval(t *testing.T) {
 	assert.NotEmpty(t, storedHistory.MediaEntries)
 
 	newEntries := map[user_media.UserMediaKey]user_media.UserMediaEntry{}
-	for _, newEntry := range storedHistory.MediaEntries {
-		newEntries[newEntry.Key] = newEntry
+	for key, newEntry := range storedHistory.MediaEntries {
+		newEntries[key] = newEntry
 	}
 
-	for _, original := range inputMediaEntries {
-		assert.Equal(t, original, newEntries[original.Key])
+	for key, original := range inputMediaEntries {
+		assert.Equal(t, original, newEntries[key])
 	}
 }

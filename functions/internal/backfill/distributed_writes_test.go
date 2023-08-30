@@ -43,8 +43,8 @@ func TestDistributedBatchWrites(t *testing.T) {
 	output := dynamo_wrapper.DistributedBatchWrites(dynamoSvc, batchwriterArgs)
 	assert.Empty(t, output.WriteRequests)
 
-	for _, original := range inputMediaEntries {
-		result, err := user_media.GetMediaInfo(dynamoSvc, original.Key)
+	for key, original := range inputMediaEntries {
+		result, err := user_media.GetMediaInfo(dynamoSvc, key)
 		assert.NoError(t, err)
 		assert.Equal(t, original, *result)
 	}

@@ -45,8 +45,6 @@ func TestGetNoDay(t *testing.T) {
 	_, userMediaStats, findDayErr := GetStatusUpdate(dynamoSvc, key)
 
 	assert.Error(t, findDayErr, ErrEmptyItems)
-	assert.Equal(t, userMediaStats.Key, key.Key)
-	assert.Equal(t, *userMediaStats.Date, key.DateTime)
 	assert.Empty(t, userMediaStats.Stats)
 }
 
@@ -57,10 +55,9 @@ func TestPutMediaInfo(t *testing.T) {
 		MediaIdentifier: "identifier",
 	}
 
-	error := PutMediaInfo(dynamoSvc, UserMediaEntry{
-		Key:         key,
+	error := PutMediaInfo(dynamoSvc, key, UserMediaEntry{
 		DisplayName: "name",
-	})
+	}, 0)
 	assert.NoError(t, error)
 }
 
@@ -96,8 +93,6 @@ func TestBasicInsert(t *testing.T) {
 	_, userMediaStats, findDayErr := GetStatusUpdate(dynamoSvc, key)
 
 	assert.NoError(t, findDayErr)
-	assert.Equal(t, userMediaStats.Key, key.Key)
-	assert.Equal(t, *userMediaStats.Date, key.DateTime)
 	assert.Equal(t, userMediaStats.Stats.CharsRead, oldUserMediaStats.Stats.CharsRead+additiveStat.CharsRead)
 	assert.Equal(t, userMediaStats.Stats.LinesRead, oldUserMediaStats.Stats.LinesRead+additiveStat.LinesRead)
 }

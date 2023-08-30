@@ -25,18 +25,15 @@ type MediaStat struct {
 }
 
 type UserMediaEntry struct {
-	Key         UserMediaKey `json:"key" binding:"required"`
-	DisplayName string       `json:"display_name"`
-	Series      string       `json:"series"`
-	LastUpdate  int64        `json:"last_update"`
+	DisplayName string `json:"display_name"`
+	Series      string `json:"series"`
+	LastUpdate  int64  `json:"last_update"`
 }
 
 type UserMediaStat struct {
-	Key        UserMediaKey `json:"key" binding:"required"`
-	Date       *int64       `json:"date"`
-	Stats      MediaStat    `json:"stats"`
-	LastUpdate int64        `json:"last_update"`
-	Pause      bool         `json:"pause"`
+	Stats      MediaStat `json:"stats"`
+	LastUpdate int64     `json:"last_update"`
+	Pause      bool      `json:"pause"`
 }
 
 func ZeroPadInt64(number int64) string {
@@ -47,6 +44,7 @@ func UserMediaPK(key UserMediaKey) string {
 	return key.MediaType + "#" + key.Username
 }
 
+// TODO: Might be useful to use the split functions elsewhere like in tests
 func splitUserMediaPK(pk string, key *UserMediaKey) error {
 	if pk == "" {
 		return errors.New("empty partition key (pk)")
